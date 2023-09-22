@@ -1,0 +1,245 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.10.0
+  creationTimestamp: null
+  name: verrazzanofleetbindings.addons.cluster.x-k8s.io
+spec:
+  group: addons.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: VerrazzanoFleetBinding
+    listKind: VerrazzanoFleetBindingList
+    plural: verrazzanofleetbindings
+    shortNames:
+    - vfb
+    - vfbs
+    singular: verrazzanofleetbinding
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Cluster to which this VerrazzanoFleetBinding belongs
+      jsonPath: .spec.clusterRef.name
+      name: Cluster
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Ready')].reason
+      name: Reason
+      priority: 1
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Ready')].message
+      name: Message
+      priority: 1
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='VerrazzanoOperatorReady')].status
+      name: Operator
+      priority: 1
+      type: string
+    - jsonPath: .status.revision
+      name: Revision
+      priority: 1
+      type: string
+    - jsonPath: .status.verrazzano.state
+      name: Verrazzano
+      priority: 1
+      type: string
+    - description: Time duration since creation of VerrazzanoFleet
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: VerrazzanoFleetBinding is the Schema for the verrazzanofleetbindings
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VerrazzanoFleetBindingSpec defines the desired state of VerrazzanoFleetBinding.
+            properties:
+              clusterRef:
+                description: ClusterRef is a reference to the Cluster to install the
+                  Helm release on.
+                properties:
+                  apiVersion:
+                    description: API version of the referent.
+                    type: string
+                  fieldPath:
+                    description: 'If referring to a piece of an object instead of
+                      an entire object, this string should contain a valid JSON/Go
+                      field access statement, such as desiredState.manifest.containers[2].
+                      For example, if the object reference is to a container within
+                      a pod, this would take on a value like: "spec.containers{name}"
+                      (where "name" refers to the name of the container that triggered
+                      the event) or if no container name is specified "spec.containers[2]"
+                      (container with index 2 in this pod). This syntax is chosen
+                      only to have some well-defined way of referencing a part of
+                      an object. TODO: this design is not final and this field is
+                      subject to change in the future.'
+                    type: string
+                  kind:
+                    description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    type: string
+                  name:
+                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                    type: string
+                  namespace:
+                    description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                    type: string
+                  resourceVersion:
+                    description: 'Specific resourceVersion to which this reference
+                      is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
+                    type: string
+                  uid:
+                    description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              image:
+                description: Image is used to set various attributes regarding a specific
+                  module. If not set, they are set as per the ImageMeta definitions.
+                properties:
+                  pullPolicy:
+                    description: PullPolicy allows to specify an image pull policy
+                      for the container images. if not set, the PullPolicy is IfNotPresent.
+                    type: string
+                  repository:
+                    description: Repository sets the container registry to pull images
+                      from. if not set, the Repository defined in OCNEMeta will be
+                      used instead.
+                    type: string
+                  tag:
+                    description: Tag allows to specify a tag for the image. if not
+                      set, the Tag defined in OCNEMeta will be used instead.
+                    type: string
+                type: object
+              imagePullSecrets:
+                description: ImagePullSecrets allows to specify secrets if the image
+                  is being pulled from an authenticated private registry. if not set,
+                  it will be assumed the images are public.
+                items:
+                  properties:
+                    name:
+                      description: Name is name of the secret to be used as image
+                        pull secret
+                      type: string
+                  type: object
+                type: array
+              privateRegistry:
+                description: PrivateRegistry sets the private registry settings for
+                  installing Verrazzano.
+                properties:
+                  enabled:
+                    description: Enabled sets a flag to determine if a private registry
+                      will be used when installing Verrazzano. if not set, the Enabled
+                      is set to false.
+                    type: boolean
+                type: object
+              verrazzano:
+                description: Verrazzano is a verrazzano spec for installation on remote
+                  cluster.
+                properties:
+                  spec:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                required:
+                - spec
+                type: object
+            required:
+            - clusterRef
+            - verrazzano
+            type: object
+          status:
+            description: VerrazzanoFleetBindingStatus defines the observed state of
+              VerrazzanoFleetBinding.
+            properties:
+              conditions:
+                description: Conditions defines current state of the VerrazzanoFleetBinding.
+                items:
+                  description: Condition defines an observation of a Cluster API resource
+                    operational state.
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another. This should be when the underlying condition changed.
+                        If that is not known, then using the time when the API field
+                        changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition. This field may be empty.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition
+                        in CamelCase. The specific API may choose whether or not this
+                        field is considered a guaranteed API. This field may not be
+                        empty.
+                      type: string
+                    severity:
+                      description: Severity provides an explicit classification of
+                        Reason code, so the users or machines can immediately understand
+                        the current situation and act accordingly. The Severity field
+                        MUST be set only when Status=False.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition in CamelCase or in foo.example.com/CamelCase.
+                        Many .condition.type values are consistent across resources
+                        like Available, but because arbitrary conditions can be useful
+                        (see .node.status.conditions), the ability to deconflict is
+                        important.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - status
+                  - type
+                  type: object
+                type: array
+              revision:
+                description: Revision is the current revision of the Helm release.
+                type: integer
+              status:
+                description: Status is the current status of the Helm release.
+                type: string
+              verrazzano:
+                description: VerrazzanoStatus objects displays verrazzano specific
+                  status
+                properties:
+                  componentsAvailable:
+                    description: ComponentsAvailable displays the health of Verrazzano
+                      component
+                    type: string
+                  state:
+                    description: Stats depicts the state of  the Verrazzano installed
+                      on the cluster.
+                    type: string
+                  version:
+                    description: Version depicts the version of Verrazzano installed
+                      on the cluster.
+                    type: string
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

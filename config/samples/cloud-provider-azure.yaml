@@ -1,0 +1,17 @@
+apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: VerrazzanoFleet
+metadata:
+  name: cloud-provider-azure-chart
+spec:
+  clusterSelector:
+    matchLabels:
+      cloudProviderAzureChart: enabled
+  repoURL: https://raw.githubusercontent.com/kubernetes-sigs/cloud-provider-azure/master/helm/repo
+  chartName: cloud-provider-azure
+  version: 1.26.5
+  releaseName: cloud-provider-azure
+  valuesTemplate: |
+    infra:
+      clusterName: {{ .Cluster.metadata.name }}
+    cloudControllerManager:
+      clusterCIDR: {{ .Cluster.spec.clusterNetwork.pods.cidrBlocks | join "," }}

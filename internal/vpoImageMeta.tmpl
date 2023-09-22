@@ -1,0 +1,26 @@
+# Copyright (c) 2023, Oracle and/or its affiliates.
+
+createNamespace: false
+{{- if .Image }}
+image: {{.Image}}
+{{- end }}
+imagePullPolicy: {{.PullPolicy}}
+{{- if or .PrivateRegistry .ImagePullSecrets .AppOperatorImage .ClusterOperatorImage}}
+global:
+{{- if .PrivateRegistry }}
+  registry: {{.Registry}}
+  repository: {{.Repository}}
+{{- end }}
+{{- if .AppOperatorImage }}
+  appOperatorImage: {{.AppOperatorImage}}
+{{- end }}
+{{- if .ClusterOperatorImage }}
+  clusterOperatorImage: {{.ClusterOperatorImage}}
+{{- end }}
+{{- if .ImagePullSecrets }}
+  imagePullSecrets:
+{{- range .ImagePullSecrets }}
+    - {{ .Name }}
+{{- end }}
+{{- end }}
+{{- end }}
