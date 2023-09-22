@@ -3,7 +3,6 @@
 package models
 
 import (
-	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 )
@@ -152,13 +151,6 @@ type HelmUninstallOptions struct {
 	// Description represents human readable information to be shown on release uninstall.
 	// +optional
 	Description string `json:"description,omitempty"`
-}
-
-type HelmValuesTemplate struct {
-	Repository       string                      `json:"repository,omitempty"`
-	Tag              string                      `json:"tag,omitempty"`
-	PullPolicy       string                      `json:"pullPolicy,omitempty"`
-	ImagePullSecrets []addonsv1alpha1.SecretName `json:"imagePullSecrets,omitempty"`
 }
 
 type Verrazzano struct {
