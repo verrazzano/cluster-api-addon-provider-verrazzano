@@ -21,6 +21,8 @@ package verrazzanofleetbinding
 import (
 	"context"
 	"fmt"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -217,7 +219,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 	}
 
 	verrazzanoSpec := verrazzanoFleetBinding.Spec.Verrazzano.Spec
-	vzSpecObject, err := internal.ConvertRawExtensionToUnstructured(verrazzanoSpec)
+	vzSpecObject, err := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
 	if err != nil {
 		log.Error(err, "Failed to convert raw extension to unstructured data")
 		return err
@@ -416,7 +418,7 @@ func setVerrazzanoPlatformOperatorConditions(ctx context.Context, verrazzanoFlee
 				conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.VerrazzanoPlatformOperatorNotRunningReason, clusterv1.ConditionSeverityError, "Verrazzano Platform Operator pods are not running")
 			}
 		} else {
-			podReadyVPO = append(podReadyVPO, internal.IsPodReady(ctx, &pod))
+			podReadyVPO = append(podReadyVPO, k8sutils.IsPodReady(ctx, &pod))
 		}
 	}
 

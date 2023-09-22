@@ -1,6 +1,6 @@
 // Copyright (c) 2023, Oracle and/or its affiliates.
 
-package internal
+package models
 
 import (
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"

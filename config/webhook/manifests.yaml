@@ -60,7 +60,7 @@ webhooks:
       namespace: system
       path: /validate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet
   failurePolicy: Fail
-  name: vverrazzanofleet.kb.io
+  name: verrazzanofleet.kb.io
   rules:
   - apiGroups:
     - addons.cluster.x-k8s.io

@@ -21,6 +21,8 @@ package verrazzanofleetbinding
 import (
 	"fmt"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
 
@@ -159,7 +161,7 @@ func TestReconcileNormal(t *testing.T) {
 			name:                   "succesfully install a Helm release",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
 			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", defaultProxy.DeepCopy().Spec).Return(&helmRelease.Release{
+				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", defaultProxy.DeepCopy().Spec, "").Return(&helmRelease.Release{
 					Name:    "test-release",
 					Version: 1,
 					Info: &helmRelease.Info{
@@ -291,14 +293,14 @@ func TestReconcileNormal(t *testing.T) {
 			internal.GetCoreV1Func = func() (corev1Cli.CoreV1Interface, error) {
 				configMap := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      internal.VerrazzanoPlatformOperatorHelmChartConfigMapName,
-						Namespace: internal.VerrazzanoPlatformOperatorNameSpace,
+						Name:      constants.VerrazzanoPlatformOperatorHelmChartConfigMapName,
+						Namespace: constants.VerrazzanoPlatformOperatorNameSpace,
 					},
 					Data: generateVPOData(),
 				}
 				return k8sfake.NewSimpleClientset(configMap).CoreV1(), nil
 			}
-			defer func() { internal.GetCoreV1Func = internal.GetCoreV1Client }()
+			defer func() { internal.GetCoreV1Func = k8sutils.GetCoreV1Client }()
 
 			r := &VerrazzanoFleetBindingReconciler{
 				Client: fake.NewClientBuilder().

@@ -21,10 +21,9 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-
 	"github.com/Masterminds/semver/v3"
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/conversion"
@@ -56,7 +55,7 @@ func (r *VerrazzanoFleet) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 //+kubebuilder:webhook:path=/mutate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=true,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=verrazzanofleet.kb.io,admissionReviewVersions=v1
-//+kubebuilder:webhook:path=/validate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=false,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=vverrazzanofleet.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=false,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=verrazzanofleet.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Defaulter = &VerrazzanoFleet{}
 var _ webhook.Validator = &VerrazzanoFleet{}
@@ -132,11 +131,6 @@ func validateFleet(s VerrazzanoFleetSpec, pathPrefix *field.Path) field.ErrorLis
 					"verrazano spec is required",
 				),
 			)
-		} else {
-			isValid, _ := isValidVerrazzanoUpgradeVersion(s)
-			if !isValid {
-				field.Invalid(pathPrefix.Child("verrazzano.spec.version"), "version", ",FleetBinding verrazzano version can't be greater than the verrazzano in admin cluster")
-			}
 		}
 	}
 
@@ -177,6 +171,14 @@ func (in *VerrazzanoFleet) ValidateUpdate(old runtime.Object) (admission.Warning
 	prev, ok := old.(*VerrazzanoFleet)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expecting VerrazzanoFleet but got a %T", old))
+	}
+
+	isValid, err := isValidVerrazzanoUpgradeVersion(in.Spec)
+	if err != nil {
+		return nil, apierrors.NewInternalError(err)
+	}
+	if !isValid {
+		return nil, apierrors.NewBadRequest("Invalid version: Verrazzano version on the workload cluster can only be upgraded to match the Verrazzano version in the admin cluster.")
 	}
 
 	originalJSON, err := json.Marshal(prev)
@@ -283,7 +285,13 @@ func isValidVerrazzanoUpgradeVersion(fleetSpec VerrazzanoFleetSpec) (bool, error
 	verrazzanoSpec := fleetSpec.Verrazzano.Spec
 	vzSpecObject, _ := ConvertRawExtensionToUnstructured(verrazzanoSpec)
 	fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
-	vzVersionOnAdminCluster := os.Getenv("version")
+	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminCluster()
+	if err != nil {
+		return false, apierrors.NewInternalError(err)
+	}
+	if vzVersionOnAdminCluster == "" && err != nil {
+		return false, nil
+	}
 	if versionExists {
 		fleetVZSemversion, err := semver.NewVersion(fleetVZVersion)
 		if err != nil {
@@ -293,7 +301,7 @@ func isValidVerrazzanoUpgradeVersion(fleetSpec VerrazzanoFleetSpec) (bool, error
 		if err != nil {
 			return false, apierrors.NewInternalError(err)
 		}
-		if fleetVZSemversion.GreaterThan(chartRequestedSemversion) {
+		if !fleetVZSemversion.Equal(chartRequestedSemversion) {
 			return false, nil
 		}
 	}

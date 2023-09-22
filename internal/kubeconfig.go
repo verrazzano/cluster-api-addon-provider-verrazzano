@@ -20,12 +20,9 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -38,7 +35,6 @@ import (
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/client/cluster"
 	ctrl "sigs.k8s.io/controller-runtime"
 	configclient "sigs.k8s.io/controller-runtime/pkg/client/config"
-	"time"
 )
 
 type Getter interface {
@@ -46,7 +42,7 @@ type Getter interface {
 	GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error)
 	GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error)
 	CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName, vzspec string) error
-	GetVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*Verrazzano, error)
+	GetVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error)
 	DeleteVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error
 	WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error
 }
@@ -175,129 +171,21 @@ func writeInClusterKubeconfigToFile(ctx context.Context, filePath string, client
 func (k *KubeconfigGetter) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	k8sRestConfig, err := BuildWorkloadClusterRESTKubeConfig(ctx, fleetBindingName, kubeconfig, clusterName)
+	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(ctx, fleetBindingName, kubeconfig, clusterName)
 	if err != nil {
 		log.Error(err, "failed to get k8s rest config")
 		return nil, errors.Wrap(err, "failed to get k8s rest config")
 	}
-	return GetKubernetesClientsetWithConfig(k8sRestConfig)
+	return k8sutils.GetKubernetesClientsetWithConfig(k8sRestConfig)
 }
 
 // GetWorkloadClusterDynamicK8sClient returns the Dynamic K8s client of an OCNE cluster if it exists.
 func (k *KubeconfigGetter) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
-	k8sRestConfig, err := BuildWorkloadClusterRESTKubeConfig(ctx, fleetBindingName, kubeconfig, clusterName)
+	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(ctx, fleetBindingName, kubeconfig, clusterName)
 	if err != nil {
 		log.Error(err, "failed to get k8s rest config")
 		return nil, errors.Wrap(err, "failed to get k8s rest config")
 	}
 	return dynamic.NewForConfig(k8sRestConfig)
-}
-
-// GetVerrazzanoFromRemoteCluster fetches the Verrazzano object from a remote cluster.
-func (k *KubeconfigGetter) GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*Verrazzano, error) {
-	log := ctrl.LoggerFrom(ctx)
-	dclient, err := k.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
-	if err != nil {
-		log.Error(err, "unable to get workload kubeconfig ")
-		return nil, err
-	}
-
-	gvr := schema.GroupVersionResource{
-		Group:    APIGroup,
-		Version:  APIVersionBeta1,
-		Resource: VerrazzanoResource,
-	}
-
-	var vzinstalled Verrazzano
-	vzos, err := dclient.Resource(gvr).Namespace(VerrazzanoInstallNamespace).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Error(err, "Unable to fetch vz install")
-		return nil, err
-	}
-	if len(vzos.Items) == 0 {
-		log.Info("verrazzano installation not found")
-		return nil, nil
-	}
-	for _, vz := range vzos.Items {
-		modBinaryData, err := json.Marshal(vz.Object)
-		if err != nil {
-			log.Error(err, "json marshalling error")
-			return nil, err
-		}
-		err = json.Unmarshal(modBinaryData, &vzinstalled)
-		if err != nil {
-			log.Error(err, "json unmarshalling error")
-			return nil, err
-		}
-	}
-	return &vzinstalled, nil
-
-}
-
-// DeleteVerrazzanoFromRemoteCluster triggers the Verrazzano deletion on the remote cluster.
-func (k *KubeconfigGetter) DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
-	log := ctrl.LoggerFrom(ctx)
-
-	dclient, err := k.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
-	if err != nil {
-		log.Error(err, "unable to get workload kubeconfig ")
-		return err
-	}
-
-	gvr := schema.GroupVersionResource{
-		Group:    "install.verrazzano.io",
-		Version:  "v1beta1",
-		Resource: "verrazzanos",
-	}
-	return dclient.Resource(gvr).Namespace(vz.Metadata.Namespace).Delete(context.TODO(), vz.Metadata.Name, metav1.DeleteOptions{})
-}
-
-// WaitForVerrazzanoUninstallCompletion waits for verrazzano uninstall process to complete within a defined timeout
-func (k *KubeconfigGetter) WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error {
-	log := ctrl.LoggerFrom(ctx)
-	done := false
-	var timeSeconds float64
-
-	timeParse, err := time.ParseDuration(VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
-	if err != nil {
-		log.Error(err, "Unable to parse time duration")
-		return err
-	}
-	totalSeconds := timeParse.Seconds()
-
-	for !done {
-		vz, err := k.GetVerrazzanoFromRemoteCluster(ctx, fleetBindingName, kubeconfig, clusterName)
-		if err != nil {
-			log.Error(err, "unable to fetch verrazzano install from workload cluster")
-			return err
-		}
-		if vz != nil {
-			if timeSeconds < totalSeconds {
-				message := fmt.Sprintf("Verrazzano detected on cluster '%s' ,state: '%s', component health: '%s'", clusterName, vz.Status.State, vz.Status.Available)
-				duration, err := WaitRandom(ctx, message, VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
-				if err != nil {
-					return err
-				}
-				timeSeconds = timeSeconds + float64(duration)
-			} else {
-				log.Error(err, "verrazzano deleetion timeout '%s' exceeded.", VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
-				return err
-			}
-		} else {
-			done = true
-		}
-	}
-	return nil
-}
-
-// CreateOrUpdateVerrazzano starts verrazzano deployment
-func (k *KubeconfigGetter) CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error {
-	log := ctrl.LoggerFrom(ctx)
-	vzSpecObject, err := ConvertRawExtensionToUnstructured(vzSpecRawExtension)
-	if err != nil {
-		log.Error(err, "Failed to convert raw extension to unstructured data")
-		return err
-	}
-	return PatchVerrazzano(ctx, fleetBindingName, kubeconfig, clusterName, vzSpecObject)
 }
