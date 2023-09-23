@@ -33,6 +33,17 @@ var (
 	GetCoreV1Func = k8sutils.GetCoreV1Client
 )
 
+type VPOHelmValuesTemplate struct {
+	Image                string                      `json:"image,omitempty"`
+	PrivateRegistry      bool                        `json:"privateRegistry"`
+	Repository           string                      `json:"repository,omitempty"`
+	Registry             string                      `json:"registry,omitempty"`
+	PullPolicy           string                      `json:"pullPolicy,omitempty"`
+	ImagePullSecrets     []addonsv1alpha1.SecretName `json:"imagePullSecrets,omitempty"`
+	AppOperatorImage     string                      `json:"appOperatorImage,omitempty"`
+	ClusterOperatorImage string                      `json:"clusterOperatorImage,omitempty"`
+}
+
 func templateYAMLIndent(i int, input string) string {
 	split := strings.Split(input, "\n")
 	ident := "\n" + strings.Repeat(" ", i)
@@ -233,15 +244,4 @@ func GetVerrazzanoPlatformOperatorAddons(ctx context.Context, fleetSpec *addonsv
 		Local:            true,
 		ValuesTemplate:   string(out),
 	}, nil
-}
-
-type VPOHelmValuesTemplate struct {
-	Image                string                      `json:"image,omitempty"`
-	PrivateRegistry      bool                        `json:"privateRegistry"`
-	Repository           string                      `json:"repository,omitempty"`
-	Registry             string                      `json:"registry,omitempty"`
-	PullPolicy           string                      `json:"pullPolicy,omitempty"`
-	ImagePullSecrets     []addonsv1alpha1.SecretName `json:"imagePullSecrets,omitempty"`
-	AppOperatorImage     string                      `json:"appOperatorImage,omitempty"`
-	ClusterOperatorImage string                      `json:"clusterOperatorImage,omitempty"`
 }

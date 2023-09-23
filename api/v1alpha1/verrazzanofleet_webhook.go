@@ -54,8 +54,8 @@ func (r *VerrazzanoFleet) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=true,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=verrazzanofleet.kb.io,admissionReviewVersions=v1
-//+kubebuilder:webhook:path=/validate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=false,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=verrazzanofleet.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=true,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=verrazzanofleet.x-k8s.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet,mutating=false,failurePolicy=fail,sideEffects=None,groups=addons.cluster.x-k8s.io,resources=verrazzanofleets,verbs=create;update,versions=v1alpha1,name=verrazzanofleet.x-k8s.io,admissionReviewVersions=v1
 
 var _ webhook.Defaulter = &VerrazzanoFleet{}
 var _ webhook.Validator = &VerrazzanoFleet{}

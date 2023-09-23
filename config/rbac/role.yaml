@@ -125,10 +125,10 @@ rules:
   - update
   - watch
 - apiGroups:
-    - install.verrazzano.io
+  - install.verrazzano.io
   resources:
-    - verrazzanos
+  - verrazzanos
   verbs:
-    - get
-    - list
-    - watch
+  - get
+  - list
+  - watch
