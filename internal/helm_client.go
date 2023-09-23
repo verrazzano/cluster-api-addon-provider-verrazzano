@@ -21,20 +21,19 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
-	"net/url"
-	"os"
-	"path"
-	"strings"
-
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	helmAction "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	helmLoader "helm.sh/helm/v3/pkg/chart/loader"
 	helmCli "helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+	"net/url"
+	"os"
+	"path"
 
 	"gopkg.in/yaml.v2"
 	helmVals "helm.sh/helm/v3/pkg/cli/values"
@@ -409,17 +408,23 @@ func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release,
 		return false, errors.New("Failed to resolve chart version of existing release")
 	}
 
-	chartRequestedSemversion, err := semver.NewVersion(chartRequested.Metadata.Version)
+	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminCluster()
 	if err != nil {
-		return false, errors.Wrapf(err, "Failed to parse chart version")
+		return false, errors.Wrapf(err, "Failed to get Verrazzano version from admin cluster")
+	}
+	if vzVersionOnAdminCluster == "" && err != nil {
+		return false, nil
+	}
+	vzSemVersionAdminCluster, err := semver.NewVersion(vzVersionOnAdminCluster)
+	if err != nil {
+		return false, errors.Wrapf(err, "Failed to parse verrazzano version on admin cluster")
 	}
 
-	fleetVZVersionParts := strings.Split(fleetVZVersion, "-")
-	fleetVZSemversion, err := semver.NewVersion(fleetVZVersionParts[0])
+	fleetVZSemversion, err := semver.NewVersion(fleetVZVersion)
 	if err != nil {
 		return false, errors.Wrapf(err, "Failed to parse fleet binding verrazzano version")
 	}
-	if !fleetVZSemversion.Equal(chartRequestedSemversion) {
+	if !fleetVZSemversion.Equal(vzSemVersionAdminCluster) {
 		log.V(2).Info("Invalid version: Verrazzano version on the workload cluster can only be upgraded to match the Verrazzano version in the admin cluster, skipping upgrade...")
 		return false, nil
 	}

@@ -23,10 +23,10 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -283,7 +283,7 @@ func paths(path []string, diff map[string]interface{}) [][]string {
 func isValidVerrazzanoUpgradeVersion(fleetSpec VerrazzanoFleetSpec) (bool, error) {
 
 	verrazzanoSpec := fleetSpec.Verrazzano.Spec
-	vzSpecObject, _ := ConvertRawExtensionToUnstructured(verrazzanoSpec)
+	vzSpecObject, _ := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
 	fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
 	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminCluster()
 	if err != nil {
@@ -306,20 +306,4 @@ func isValidVerrazzanoUpgradeVersion(fleetSpec VerrazzanoFleetSpec) (bool, error
 		}
 	}
 	return true, nil
-}
-
-// ConvertRawExtensionToUnstructured converts a runtime.RawExtension to unstructured.Unstructured.
-func ConvertRawExtensionToUnstructured(rawExtension *runtime.RawExtension) (*unstructured.Unstructured, error) {
-	var obj runtime.Object
-	var scope conversion.Scope
-	if err := runtime.Convert_runtime_RawExtension_To_runtime_Object(rawExtension, &obj, scope); err != nil {
-		return nil, err
-	}
-
-	innerObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return &unstructured.Unstructured{Object: innerObj}, nil
 }
