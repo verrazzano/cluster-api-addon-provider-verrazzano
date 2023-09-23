@@ -13,7 +13,7 @@ webhooks:
       namespace: system
       path: /mutate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet
   failurePolicy: Fail
-  name: verrazzanofleet.kb.io
+  name: verrazzanofleet.x-k8s.io
   rules:
   - apiGroups:
     - addons.cluster.x-k8s.io
@@ -60,7 +60,7 @@ webhooks:
       namespace: system
       path: /validate-addons-cluster-x-k8s-io-v1alpha1-verrazzanofleet
   failurePolicy: Fail
-  name: verrazzanofleet.kb.io
+  name: verrazzanofleet.x-k8s.io
   rules:
   - apiGroups:
     - addons.cluster.x-k8s.io
