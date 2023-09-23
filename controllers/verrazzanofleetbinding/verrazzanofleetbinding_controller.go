@@ -21,7 +21,6 @@ package verrazzanofleetbinding
 import (
 	"context"
 	"fmt"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"strings"
 
@@ -32,7 +31,6 @@ import (
 	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -218,18 +216,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 		return err
 	}
 
-	verrazzanoSpec := verrazzanoFleetBinding.Spec.Verrazzano.Spec
-	vzSpecObject, err := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
-	if err != nil {
-		log.Error(err, "Failed to convert raw extension to unstructured data")
-		return err
-	}
-	fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
-	if !versionExists {
-		log.V(2).Info("'version' field not found in verrazzanoSpec.")
-	}
-
-	release, err := client.InstallOrUpgradeHelmRelease(ctx, kubeconfig, addonsSpec.ValuesTemplate, addonsSpec, fleetVZVersion)
+	release, err := client.InstallOrUpgradeHelmRelease(ctx, kubeconfig, addonsSpec.ValuesTemplate, addonsSpec, verrazzanoFleetBinding)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to install or upgrade release for binding '%s' on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 		//log.Error(err, fmt.Sprintf("Failed to install or upgrade release '%s' on cluster %s", verrazzanoFleetBinding.Spec.ReleaseName, verrazzanoFleetBinding.Spec.ClusterRef.Name))
