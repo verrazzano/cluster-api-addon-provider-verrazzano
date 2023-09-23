@@ -425,7 +425,7 @@ func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release,
 		return false, errors.Wrapf(err, "Failed to parse fleet binding verrazzano version")
 	}
 	if !fleetVZSemversion.Equal(vzSemVersionAdminCluster) {
-		log.V(2).Info("Invalid version: Verrazzano version on the workload cluster can only be upgraded to match the Verrazzano version in the admin cluster, skipping upgrade...")
+		log.V(2).Info("Invalid version: Verrazzano version on the workload cluster can only be upgraded to match the Verrazzano version in the admin cluster, skipping upgrade...", "flelet", fleetVZSemversion, "admin", vzSemVersionAdminCluster)
 		return false, nil
 	}
 
