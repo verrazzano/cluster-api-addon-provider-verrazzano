@@ -25,6 +25,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	v1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
 	models "github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	gomock "go.uber.org/mock/gomock"
 	release "helm.sh/helm/v3/pkg/release"
@@ -69,18 +70,18 @@ func (mr *MockClientMockRecorder) GetHelmRelease(ctx, kubeconfig, spec interface
 }
 
 // InstallOrUpgradeHelmRelease mocks base method.
-func (m *MockClient) InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, fleetVZVersion string) (*release.Release, error) {
+func (m *MockClient) InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, verrazzanoFleetBinding *v1alpha1.VerrazzanoFleetBinding) (*release.Release, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InstallOrUpgradeHelmRelease", ctx, kubeconfig, values, spec, fleetVZVersion)
+	ret := m.ctrl.Call(m, "InstallOrUpgradeHelmRelease", ctx, kubeconfig, values, spec, verrazzanoFleetBinding)
 	ret0, _ := ret[0].(*release.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InstallOrUpgradeHelmRelease indicates an expected call of InstallOrUpgradeHelmRelease.
-func (mr *MockClientMockRecorder) InstallOrUpgradeHelmRelease(ctx, kubeconfig, values, spec, fleetVZVersion interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) InstallOrUpgradeHelmRelease(ctx, kubeconfig, values, spec, verrazzanoFleetBinding interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallOrUpgradeHelmRelease", reflect.TypeOf((*MockClient)(nil).InstallOrUpgradeHelmRelease), ctx, kubeconfig, values, spec, fleetVZVersion)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallOrUpgradeHelmRelease", reflect.TypeOf((*MockClient)(nil).InstallOrUpgradeHelmRelease), ctx, kubeconfig, values, spec, verrazzanoFleetBinding)
 }
 
 // UninstallHelmRelease mocks base method.
