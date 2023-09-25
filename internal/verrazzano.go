@@ -155,14 +155,14 @@ func PatchVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterN
 		log.Error(err, "failed in yaml marshall")
 		return err
 	}
-	log.V(5).Info("verrazzano spec applied", string(data))
+	log.V(2).Info("verrazzano spec applied", string(data))
 
 	//Apply the Yaml
 	_, err = dclient.Resource(gvr).Namespace(newObj.GetNamespace()).Patch(ctx, newObj.GetName(), types.ApplyPatchType, data, v1.PatchOptions{
 		FieldManager: "verrazzano-platform-controller",
 	})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to apply verrazzano spec"))
+		log.Error(err, fmt.Sprintf("failed to apply verrazzano spec"), string(data))
 		return err
 	}
 	return nil
