@@ -25,7 +25,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	internal "github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal"
+	models "github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	gomock "go.uber.org/mock/gomock"
 	dynamic "k8s.io/client-go/dynamic"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -99,10 +99,10 @@ func (mr *MockGetterMockRecorder) GetClusterKubeconfig(ctx, cluster interface{})
 }
 
 // GetVerrazzano mocks base method.
-func (m *MockGetter) GetVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*internal.Verrazzano, error) {
+func (m *MockGetter) GetVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetVerrazzano", ctx, fleetBindingName, kubeconfig, clusterName)
-	ret0, _ := ret[0].(*internal.Verrazzano)
+	ret0, _ := ret[0].(*models.Verrazzano)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

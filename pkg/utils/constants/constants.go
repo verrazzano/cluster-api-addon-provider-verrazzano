@@ -1,6 +1,6 @@
 // Copyright (c) 2023, Oracle and/or its affiliates.
 
-package internal
+package constants
 
 const (
 	// EnvVarKubeConfig Name of Environment Variable for KUBECONFIG

@@ -1,32 +1,32 @@
 // Copyright (c) 2023, Oracle and/or its affiliates.
 
-package internal
+package utils
 
 import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"math/big"
-	"os"
-	"time"
-
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
+	"math/big"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"time"
 )
 
 // WaitRandom generates a random number between min and max
 func WaitRandom(ctx context.Context, message, timeout string) (int, error) {
 	log := ctrl.LoggerFrom(ctx)
-	randomBig, err := rand.Int(rand.Reader, big.NewInt(Max))
+	randomBig, err := rand.Int(rand.Reader, big.NewInt(constants.Max))
 	if err != nil {
 		return 0, fmt.Errorf("Unable to generate random number %v", zap.Error(err))
 	}
 	randomInt := int(randomBig.Int64())
-	if randomInt < Min {
-		randomInt = (Min + Max) / 2
+	if randomInt < constants.Min {
+		randomInt = (constants.Min + constants.Max) / 2
 	}
 	timeParse, err := time.ParseDuration(timeout)
 	if err != nil {
@@ -57,7 +57,7 @@ func ConvertRawExtensionToUnstructured(rawExtension *runtime.RawExtension) (*uns
 	return &unstructured.Unstructured{Object: innerObj}, nil
 }
 
-func getEnvValueWithDefault(key, defaultValue string) string {
+func GetEnvValueWithDefault(key, defaultValue string) string {
 	value, ok := os.LookupEnv(key)
 	if ok {
 		return value

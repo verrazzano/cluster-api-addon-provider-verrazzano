@@ -21,18 +21,23 @@ package internal
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"os"
-	"path"
-
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
+	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	helmAction "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	helmLoader "helm.sh/helm/v3/pkg/chart/loader"
 	helmCli "helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"net/url"
+	"os"
+	"path"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	helmVals "helm.sh/helm/v3/pkg/cli/values"
@@ -47,9 +52,9 @@ import (
 )
 
 type Client interface {
-	InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *HelmModuleAddons, fleetVZVersion string) (*helmRelease.Release, error)
-	GetHelmRelease(ctx context.Context, kubeconfig string, spec *HelmModuleAddons) (*helmRelease.Release, error)
-	UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error)
+	InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (*helmRelease.Release, error)
+	GetHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.Release, error)
+	UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error)
 }
 
 type HelmClient struct{}
@@ -110,7 +115,7 @@ func HelmInit(ctx context.Context, namespace string, kubeconfig string) (*helmCl
 
 // InstallOrUpgradeHelmRelease installs a Helm release if it does not exist, or upgrades it if it does and differs from the spec.
 // It returns a boolean indicating whether an install or upgrade was performed.
-func (c *HelmClient) InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *HelmModuleAddons, fleetVZVersion string) (*helmRelease.Release, error) {
+func (c *HelmClient) InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (*helmRelease.Release, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	log.V(2).Info("Installing or upgrading Helm release")
@@ -127,11 +132,11 @@ func (c *HelmClient) InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig
 		return nil, err
 	}
 
-	return c.UpgradeHelmReleaseIfChanged(ctx, kubeconfig, values, spec, existingRelease, fleetVZVersion)
+	return c.UpgradeHelmReleaseIfChanged(ctx, kubeconfig, values, spec, existingRelease, verrazzanoFleetBinding)
 }
 
 // generateHelmInstallConfig generates default helm install config using helmOptions specified in HCP CR spec.
-func generateHelmInstallConfig(actionConfig *helmAction.Configuration, helmOptions *HelmOptions) *helmAction.Install {
+func generateHelmInstallConfig(actionConfig *helmAction.Configuration, helmOptions *models.HelmOptions) *helmAction.Install {
 	installClient := helmAction.NewInstall(actionConfig)
 	installClient.CreateNamespace = true
 	if helmOptions == nil {
@@ -161,7 +166,7 @@ func generateHelmInstallConfig(actionConfig *helmAction.Configuration, helmOptio
 }
 
 // generateHelmUpgradeConfig generates default helm upgrade config using helmOptions specified in HCP CR spec.
-func generateHelmUpgradeConfig(actionConfig *helmAction.Configuration, helmOptions *HelmOptions) *helmAction.Upgrade {
+func generateHelmUpgradeConfig(actionConfig *helmAction.Configuration, helmOptions *models.HelmOptions) *helmAction.Upgrade {
 	upgradeClient := helmAction.NewUpgrade(actionConfig)
 	if helmOptions == nil {
 		return upgradeClient
@@ -190,7 +195,7 @@ func generateHelmUpgradeConfig(actionConfig *helmAction.Configuration, helmOptio
 }
 
 // InstallHelmRelease installs a Helm release.
-func (c *HelmClient) InstallHelmRelease(ctx context.Context, kubeconfig, values string, spec *HelmModuleAddons) (*helmRelease.Release, error) {
+func (c *HelmClient) InstallHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons) (*helmRelease.Release, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	settings, actionConfig, err := HelmInit(ctx, spec.ReleaseNamespace, kubeconfig)
@@ -299,7 +304,7 @@ func getHelmChartAndRepoName(chartName, repoURL string) (string, string, error) 
 }
 
 // UpgradeHelmReleaseIfChanged upgrades a Helm release. The boolean refers to if an upgrade was attempted.
-func (c *HelmClient) UpgradeHelmReleaseIfChanged(ctx context.Context, kubeconfig, values string, spec *HelmModuleAddons, existing *helmRelease.Release, fleetVZVersion string) (*helmRelease.Release, error) {
+func (c *HelmClient) UpgradeHelmReleaseIfChanged(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, existing *helmRelease.Release, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (*helmRelease.Release, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	settings, actionConfig, err := HelmInit(ctx, spec.ReleaseNamespace, kubeconfig)
@@ -362,7 +367,7 @@ func (c *HelmClient) UpgradeHelmReleaseIfChanged(ctx context.Context, kubeconfig
 		return nil, errors.Errorf("failed to load request chart %s", chartName)
 	}
 
-	shouldUpgrade, err := shouldUpgradeHelmRelease(ctx, *existing, chartRequested, vals, fleetVZVersion)
+	shouldUpgrade, err := shouldUpgradeHelmRelease(ctx, *existing, chartRequested, vals, verrazzanoFleetBinding)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +384,7 @@ func (c *HelmClient) UpgradeHelmReleaseIfChanged(ctx context.Context, kubeconfig
 }
 
 // writeValuesToFile writes the Helm values to a temporary file.
-func writeValuesToFile(ctx context.Context, values string, spec *HelmModuleAddons) (string, error) {
+func writeValuesToFile(ctx context.Context, values string, spec *models.HelmModuleAddons) (string, error) {
 	log := ctrl.LoggerFrom(ctx)
 	log.V(2).Info("Writing values to file")
 	valuesFile, err := os.CreateTemp("", spec.ChartName+"-"+spec.ReleaseName+"-*.yaml")
@@ -395,36 +400,68 @@ func writeValuesToFile(ctx context.Context, values string, spec *HelmModuleAddon
 }
 
 // shouldUpgradeHelmRelease determines if a Helm release should be upgraded.
-func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release, chartRequested *chart.Chart, values map[string]interface{}, fleetVZVersion string) (bool, error) {
+func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release, chartRequested *chart.Chart, values map[string]interface{}, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (bool, error) {
 	log := ctrl.LoggerFrom(ctx)
+	existing.Info.Status.String()
 
+	verrazzanoSpec := verrazzanoFleetBinding.Spec.Verrazzano.Spec
+	vzSpecObject, err := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
+	if err != nil {
+		log.Error(err, "Failed to convert raw extension to unstructured data")
+		return false, err
+	}
+	fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
+	if !versionExists {
+		log.V(2).Info("'version' field not found in verrazzanoSpec.")
+	}
 	if fleetVZVersion == "" {
 		log.V(2).Info("version is same or not specified, skipping upgrade...")
 		return false, nil
+	}
+
+	vzVersionWorkloadCluster := verrazzanoFleetBinding.Status.Verrazzano.Version
+	vzSemVersionWorkloadCluster, err := semver.NewVersion(vzVersionWorkloadCluster)
+	if err != nil {
+		return false, errors.Wrapf(err, "Failed to parse verrazzano version on workload cluster")
 	}
 
 	if existing.Chart == nil || existing.Chart.Metadata == nil {
 		return false, errors.New("Failed to resolve chart version of existing release")
 	}
 
-	chartRequestedSemversion, err := semver.NewVersion(chartRequested.Metadata.Version)
+	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminCluster()
 	if err != nil {
-		return false, errors.Wrapf(err, "Failed to parse chart version")
+		return false, errors.Wrapf(err, "Failed to get Verrazzano version from admin cluster")
+	}
+	if vzVersionOnAdminCluster == "" && err != nil {
+		return false, nil
+	}
+	vzSemVersionAdminCluster, err := semver.NewVersion(vzVersionOnAdminCluster)
+	if err != nil {
+		return false, errors.Wrapf(err, "Failed to parse verrazzano version on admin cluster")
 	}
 
 	fleetVZSemversion, err := semver.NewVersion(fleetVZVersion)
 	if err != nil {
 		return false, errors.Wrapf(err, "Failed to parse fleet binding verrazzano version")
 	}
-
-	if fleetVZSemversion.GreaterThan(chartRequestedSemversion) {
-		log.V(2).Info("verrazzano version on workload cluster cannot be greater than the verrazzano version in admin cluster")
+	if !fleetVZSemversion.Equal(vzSemVersionAdminCluster) {
+		log.V(2).Info("Verrazzano version on the workload cluster can only be upgraded to the Verrazzano version in the admin cluster, skipping upgrade...", "flelet", fleetVZSemversion, "admin", vzSemVersionAdminCluster)
 		return false, nil
 	}
 
-	// Checks existing release and requested metadata versions and ensures the version is specified in the verrazzano spec of FleetBinding
-	if (existing.Chart.Metadata.Version != chartRequested.Metadata.Version) && (existing.Chart.Metadata.Version != fleetVZVersion) {
+	// Helm chart versions do not have version sha, therefore this condition handles upgrade for same release version but different commit
+	// This is useful for development testing.
+	if existing.Chart.Metadata.Version == chartRequested.Metadata.Version && !vzSemVersionWorkloadCluster.Equal(vzSemVersionAdminCluster) {
 		log.V(3).Info("Versions are different, upgrading")
+		return true, nil
+	}
+
+	fleetVZVersionParts := strings.Split(fleetVZVersion, "-")
+	// Checks existing release and requested metadata versions
+	// Also, ensures latest VPO is not installed when vz version in the FleetBinding spec does not match admin cluster verrazzano version
+	if (existing.Chart.Metadata.Version != chartRequested.Metadata.Version) && (existing.Chart.Metadata.Version != fleetVZVersionParts[0]) {
+		log.V(2).Info("Versions are different, upgrading")
 		return true, nil
 	}
 
@@ -450,7 +487,7 @@ func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release,
 }
 
 // GetHelmRelease returns a Helm release if it exists.
-func (c *HelmClient) GetHelmRelease(ctx context.Context, kubeconfig string, spec *HelmModuleAddons) (*helmRelease.Release, error) {
+func (c *HelmClient) GetHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.Release, error) {
 	if spec.ReleaseName == "" {
 		return nil, helmDriver.ErrReleaseNotFound
 	}
@@ -469,7 +506,7 @@ func (c *HelmClient) GetHelmRelease(ctx context.Context, kubeconfig string, spec
 }
 
 // ListHelmReleases lists all Helm releases in a namespace.
-func (c *HelmClient) ListHelmReleases(ctx context.Context, kubeconfig string, spec *HelmModuleAddons) ([]*helmRelease.Release, error) {
+func (c *HelmClient) ListHelmReleases(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) ([]*helmRelease.Release, error) {
 	_, actionConfig, err := HelmInit(ctx, spec.ReleaseNamespace, kubeconfig)
 	if err != nil {
 		return nil, err
@@ -484,7 +521,7 @@ func (c *HelmClient) ListHelmReleases(ctx context.Context, kubeconfig string, sp
 }
 
 // generateHelmUninstallConfig generates default helm uninstall config using helmOptions specified in HCP CR spec.
-func generateHelmUninstallConfig(actionConfig *helmAction.Configuration, helmOptions *HelmOptions) *helmAction.Uninstall {
+func generateHelmUninstallConfig(actionConfig *helmAction.Configuration, helmOptions *models.HelmOptions) *helmAction.Uninstall {
 	uninstallClient := helmAction.NewUninstall(actionConfig)
 	if helmOptions == nil {
 		return uninstallClient
@@ -505,7 +542,7 @@ func generateHelmUninstallConfig(actionConfig *helmAction.Configuration, helmOpt
 }
 
 // UninstallHelmRelease uninstalls a Helm release.
-func (c *HelmClient) UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error) {
+func (c *HelmClient) UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error) {
 	_, actionConfig, err := HelmInit(ctx, spec.ReleaseNamespace, kubeconfig)
 	if err != nil {
 		return nil, err
@@ -522,7 +559,7 @@ func (c *HelmClient) UninstallHelmRelease(ctx context.Context, kubeconfig string
 }
 
 // RollbackHelmRelease rolls back a Helm release.
-func (c *HelmClient) RollbackHelmRelease(ctx context.Context, kubeconfig string, spec *HelmModuleAddons) error {
+func (c *HelmClient) RollbackHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) error {
 	_, actionConfig, err := HelmInit(ctx, spec.ReleaseNamespace, kubeconfig)
 	if err != nil {
 		return err
