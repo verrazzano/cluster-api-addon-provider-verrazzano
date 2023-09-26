@@ -403,27 +403,21 @@ func writeValuesToFile(ctx context.Context, values string, spec *models.HelmModu
 func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release, chartRequested *chart.Chart, values map[string]interface{}, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (bool, error) {
 	log := ctrl.LoggerFrom(ctx)
 	existing.Info.Status.String()
-	var err error
-	var fleetVZVersion string
 	var vzSemVersionWorkloadCluster *semver.SemVersion
 
-	if verrazzanoFleetBinding.Spec.Verrazzano != nil {
-		if verrazzanoFleetBinding.Spec.Verrazzano.Spec != nil {
-			verrazzanoSpec := verrazzanoFleetBinding.Spec.Verrazzano.Spec
-			vzSpecObject, err := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
-			if err != nil {
-				log.Error(err, "Failed to convert raw extension to unstructured data")
-				return false, err
-			}
-			fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
-			if !versionExists {
-				log.V(2).Info("'version' field not found in verrazzanoSpec.")
-			}
-			if fleetVZVersion == "" {
-				log.V(2).Info("version is same or not specified, skipping upgrade...")
-				return false, nil
-			}
-		}
+	verrazzanoSpec := verrazzanoFleetBinding.Spec.Verrazzano.Spec
+	vzSpecObject, err := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
+	if err != nil {
+		log.Error(err, "Failed to convert raw extension to unstructured data")
+		return false, err
+	}
+	fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
+	if !versionExists {
+		log.V(2).Info("'version' field not found in verrazzanoSpec.")
+	}
+	if fleetVZVersion == "" {
+		log.V(2).Info("version is same or not specified, skipping upgrade...")
+		return false, nil
 	}
 
 	if verrazzanoFleetBinding.Status.Verrazzano != (addonsv1alpha1.VerrazzanoStatus{}) {
