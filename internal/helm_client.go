@@ -420,7 +420,7 @@ func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release,
 		return false, nil
 	}
 
-	if verrazzanoFleetBinding.Status.Verrazzano != (addonsv1alpha1.VerrazzanoStatus{}) {
+	if verrazzanoFleetBinding.Status.Verrazzano.Version != "" {
 		vzVersionWorkloadCluster := verrazzanoFleetBinding.Status.Verrazzano.Version
 		vzSemVersionWorkloadCluster, err = semver.NewSemVersion(vzVersionWorkloadCluster)
 		if err != nil {
@@ -455,9 +455,11 @@ func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release,
 
 	// Helm chart versions do not have version sha, therefore this condition handles upgrade for same release version but different commit
 	// This is useful for development testing.
-	if existing.Chart.Metadata.Version == chartRequested.Metadata.Version && !vzSemVersionWorkloadCluster.IsEqualTo(vzSemVersionAdminCluster) {
-		log.V(3).Info("Versions are different, upgrading")
-		return true, nil
+	if vzSemVersionWorkloadCluster != nil {
+		if existing.Chart.Metadata.Version == chartRequested.Metadata.Version && !vzSemVersionWorkloadCluster.IsEqualTo(vzSemVersionAdminCluster) {
+			log.V(3).Info("Versions are different, upgrading")
+			return true, nil
+		}
 	}
 
 	fleetVZVersionParts := strings.Split(fleetVZVersion, "-")
