@@ -24,7 +24,9 @@ import (
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
+	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"testing"
 
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
@@ -189,102 +191,99 @@ func TestReconcileNormal(t *testing.T) {
 			},
 			expectedError: "",
 		},
-		/*
-			{
-				name:                   "succesfully install a Helm release with a generated name",
-				verrazzanoFleetBinding: fleetBinding,
-				clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", fleetBinding.Spec).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusDeployed,
-						},
-					}, nil).Times(1)
-				},
-				expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-					_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-					g.Expect(ok).To(BeTrue())
-					g.Expect(vfb.Status.Revision).To(Equal(1))
-					g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusDeployed))
-
-					g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
-					g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
-				},
-				expectedError: "",
+		{
+			name:                   "succesfully install a Helm release with a generated name",
+			verrazzanoFleetBinding: fleetBinding,
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, fleetBinding).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusDeployed,
+					},
+				}, nil).Times(1)
 			},
-			{
-				name:                   "Helm release pending",
-				verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-				clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", defaultProxy.Spec).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusPendingInstall,
-						},
-					}, nil).Times(1)
-				},
-				expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-					t.Logf("VerrazzanoFleetBinding: %+v", vfb)
-					_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-					g.Expect(ok).To(BeFalse())
-					g.Expect(vfb.Status.Revision).To(Equal(1))
-					g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusPendingInstall))
+			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
+				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
+				g.Expect(ok).To(BeTrue())
+				g.Expect(vfb.Status.Revision).To(Equal(1))
+				g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusDeployed))
 
-					releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
-					g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
-					g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmReleasePendingReason))
-					g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityInfo))
-				},
-				expectedError: "",
+				g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
+				g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
 			},
-			{
-				name:                   "Helm client returns error",
-				verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-				clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", defaultProxy.Spec).Return(nil, errInternal).Times(1)
-				},
-				expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-					_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-					g.Expect(ok).To(BeFalse())
-
-					releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
-					g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
-					g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
-					g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
-					g.Expect(releaseReady.Message).To(Equal(errInternal.Error()))
-
-				},
-				expectedError: errInternal.Error(),
+			expectedError: "",
+		},
+		{
+			name:                   "Helm release pending",
+			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, defaultProxy.Spec).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusPendingInstall,
+					},
+				}, nil).Times(1)
 			},
-			{
-				name:                   "Helm release in a failed state, no client error",
-				verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-				clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", defaultProxy.Spec).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusFailed,
-						},
-					}, nil).Times(1)
-				},
-				expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-					_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-					g.Expect(ok).To(BeFalse())
+			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
+				t.Logf("VerrazzanoFleetBinding: %+v", vfb)
+				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
+				g.Expect(ok).To(BeFalse())
+				g.Expect(vfb.Status.Revision).To(Equal(1))
+				g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusPendingInstall))
 
-					releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
-					g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
-					g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
-					g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
-					g.Expect(releaseReady.Message).To(Equal(fmt.Sprintf("Helm release failed: %s", helmRelease.StatusFailed)))
-
-				},
-				expectedError: "",
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
+				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmReleasePendingReason))
+				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityInfo))
 			},
+			expectedError: "",
+		},
+		{
+			name:                   "Helm client returns error",
+			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, defaultProxy).Return(nil, errInternal).Times(1)
+			},
+			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
+				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
+				g.Expect(ok).To(BeFalse())
 
-		*/
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
+				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
+				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
+				g.Expect(releaseReady.Message).To(Equal(errInternal.Error()))
+
+			},
+			expectedError: errInternal.Error(),
+		},
+		{
+			name:                   "Helm release in a failed state, no client error",
+			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, defaultProxy).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusFailed,
+					},
+				}, nil).Times(1)
+			},
+			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
+				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
+				g.Expect(ok).To(BeFalse())
+
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
+				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
+				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
+				g.Expect(releaseReady.Message).To(Equal(fmt.Sprintf("Helm release failed: %s", helmRelease.StatusFailed)))
+
+			},
+			expectedError: "",
+		},
 	}
 
 	for _, tc := range testcases {
@@ -330,7 +329,6 @@ func TestReconcileNormal(t *testing.T) {
 	}
 }
 
-/*
 func TestReconcileDelete(t *testing.T) {
 	testcases := []struct {
 		name                   string
@@ -422,4 +420,3 @@ func TestReconcileDelete(t *testing.T) {
 		})
 	}
 }
-*/
