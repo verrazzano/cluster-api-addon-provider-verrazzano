@@ -133,7 +133,7 @@ func (r *VerrazzanoFleetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	releaseList, err := r.listInstalledReleases(ctx, verrazzanoFleet.Namespace, label)
 	if err != nil {
-		log.V(2).Error(err, "Failed to list releases: "+err.Error())
+		log.Error(err, "Failed to list releases: "+err.Error())
 		return ctrl.Result{}, err
 	}
 
