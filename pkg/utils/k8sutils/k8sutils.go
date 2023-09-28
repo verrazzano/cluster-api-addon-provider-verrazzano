@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -69,25 +68,8 @@ func GetKubeConfigLocation() (string, error) {
 
 }
 
-// GetKubeConfigGivenPathAndContext returns a rest.config given the kubeconfigPath and context
-func GetKubeConfigGivenPathAndContext(kubeConfigPath string, kubeContext string) (*rest.Config, error) {
-	// If no values passed, call default GetKubeConfig
-	if len(kubeConfigPath) == 0 && len(kubeContext) == 0 {
-		return GetKubeConfig()
-	}
-
-	// Default the value of kubeConfigLoc?
-	var err error
-	if len(kubeConfigPath) == 0 {
-		kubeConfigPath, err = GetKubeConfigLocation()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeConfigPath},
-		&clientcmd.ConfigOverrides{CurrentContext: kubeContext}).ClientConfig()
+func GetRESTConfigGivenString(kubeconfig string) (*rest.Config, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
 	if err != nil {
 		return nil, err
 	}
@@ -103,23 +85,8 @@ func GetKubernetesClientsetWithConfig(config *rest.Config) (*kubernetes.Clientse
 }
 
 // BuildWorkloadClusterRESTKubeConfig writes the kubeconfig to a temporary file and then returns the rest.config
-func BuildWorkloadClusterRESTKubeConfig(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*rest.Config, error) {
-	log := ctrl.LoggerFrom(ctx)
-	tmpFile, err := os.CreateTemp(os.TempDir(), fleetBindingName)
-	if err != nil {
-		log.Error(err, "failed to create temporary file")
-		return nil, gerrors.Wrap(err, "failed to create temporary file")
-	}
-	defer os.RemoveAll(tmpFile.Name())
-
-	if err := os.WriteFile(tmpFile.Name(), []byte(kubeconfig), 0600); err != nil {
-		log.Error(err, "failed to write to destination file")
-		return nil, gerrors.Wrap(err, "failed to write to destination file")
-	}
-	clusterContext := fmt.Sprintf("%s-admin@%s", clusterName, clusterName)
-	clusterContext = utils.GetEnvValueWithDefault("DEV_CLUSTER_CONTEXT", clusterContext)
-
-	return GetKubeConfigGivenPathAndContext(tmpFile.Name(), clusterContext)
+func BuildWorkloadClusterRESTKubeConfig(kubeconfig string) (*rest.Config, error) {
+	return GetRESTConfigGivenString(kubeconfig)
 }
 
 // IsPodReady checks if POD is in ready state
