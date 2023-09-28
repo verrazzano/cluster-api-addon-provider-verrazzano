@@ -127,20 +127,6 @@ func (r *VerrazzanoFleetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		log.V(2).Info("Successfully patched VerrazzanoFleet", "verrazzanoFleet", verrazzanoFleet.Name)
 	}()
 
-	selector := verrazzanoFleet.Spec.ClusterSelector.Name
-
-	log.V(2).Info("Finding matching clusters for VerrazzanoFleet with selector selector", "verrazzanoFleet", verrazzanoFleet.Name, "selector", selector)
-	// TODO: When a Cluster is being deleted, it will show up in the list of clusters even though we can't Reconcile on it.
-	// This is because of ownerRefs and how the Cluster gets deleted. It will be eventually consistent but it would be better
-	// to not have errors. An idea would be to check the deletion timestamp.
-	cluster, err := r.getClustersWithName(ctx, verrazzanoFleet.Namespace, selector)
-	if err != nil {
-		conditions.MarkFalse(verrazzanoFleet, addonsv1alpha1.VerrazzanoFleetBindingSpecsCreatedOrUpDatedCondition, addonsv1alpha1.ClusterSelectionFailedReason, clusterv1.ConditionSeverityError, err.Error())
-
-		return ctrl.Result{}, err
-	}
-	// conditions.MarkTrue(verrazzanoFleet, addonsv1alpha1.VerrazzanoFleetBindingSpecsReadyCondition)
-
 	log.V(2).Info("Finding verrazzanoFleetBinding for VerrazzanoFleet", "verrazzanoFleet", verrazzanoFleet.Name)
 	label := map[string]string{
 		addonsv1alpha1.VerrazzanoFleetLabelName: verrazzanoFleet.Name,
@@ -174,15 +160,27 @@ func (r *VerrazzanoFleetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 			// remove our finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(verrazzanoFleet, addonsv1alpha1.VerrazzanoFleetFinalizer)
-			if err := patchVerrazzanoFleet(ctx, patchHelper, verrazzanoFleet, r); err != nil {
-				// TODO: Should we try to set the error here? If we can't remove the finalizer we likely can't update the status either.
-				return ctrl.Result{}, err
-			}
+			// Patch the object, ignoring conflicts on the conditions owned by this controller.
+			return ctrl.Result{}, doPatch(ctx, verrazzanoFleet, patchHelper)
 		}
 
 		// Stop reconciliation as the item is being deleted
 		return ctrl.Result{}, nil
 	}
+
+	selector := verrazzanoFleet.Spec.ClusterSelector.Name
+
+	log.V(2).Info("Finding matching clusters for VerrazzanoFleet with selector selector", "verrazzanoFleet", verrazzanoFleet.Name, "selector", selector)
+	// TODO: When a Cluster is being deleted, it will show up in the list of clusters even though we can't Reconcile on it.
+	// This is because of ownerRefs and how the Cluster gets deleted. It will be eventually consistent but it would be better
+	// to not have errors. An idea would be to check the deletion timestamp.
+	cluster, err := r.getClustersWithName(ctx, verrazzanoFleet.Namespace, selector)
+	if err != nil {
+		conditions.MarkFalse(verrazzanoFleet, addonsv1alpha1.VerrazzanoFleetBindingSpecsCreatedOrUpDatedCondition, addonsv1alpha1.ClusterSelectionFailedReason, clusterv1.ConditionSeverityError, err.Error())
+
+		return ctrl.Result{}, err
+	}
+	// conditions.MarkTrue(verrazzanoFleet, addonsv1alpha1.VerrazzanoFleetBindingSpecsReadyCondition)
 
 	log.V(2).Info("Reconciling VerrazzanoFleet", "randomName", verrazzanoFleet.Name)
 	err = r.reconcileNormal(ctx, verrazzanoFleet, cluster, releaseList.Items)
@@ -323,16 +321,7 @@ func patchVerrazzanoFleet(ctx context.Context, patchHelper *patch.Helper, verraz
 	}
 
 	// Patch the object, ignoring conflicts on the conditions owned by this controller.
-	return patchHelper.Patch(
-		ctx,
-		verrazzanoFleet,
-		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
-			clusterv1.ReadyCondition,
-			addonsv1alpha1.VerrazzanoFleetBindingSpecsCreatedOrUpDatedCondition,
-			addonsv1alpha1.VerrazzanoFleetBindingsReadyCondition,
-		}},
-		patch.WithStatusObservedGeneration{},
-	)
+	return doPatch(ctx, verrazzanoFleet, patchHelper)
 }
 
 // ClusterToVerrazzanoFleetMapper is a mapper function that maps a Cluster to the VerrazzanoFleets that would select the Cluster.
@@ -408,4 +397,18 @@ func patchVerrazzanoFleetHelper(ctx context.Context, verrazzanoFleet *addonsv1al
 		return nil, err
 	}
 	return reconciler.getExistingVerrazzanoFleetBinding(ctx, verrazzanoFleet, cluster)
+}
+
+func doPatch(ctx context.Context, verrazzanoFleet *addonsv1alpha1.VerrazzanoFleet, patchHelper *patch.Helper) error {
+	// Patch the object, ignoring conflicts on the conditions owned by this controller.
+	return patchHelper.Patch(
+		ctx,
+		verrazzanoFleet,
+		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
+			clusterv1.ReadyCondition,
+			addonsv1alpha1.VerrazzanoFleetBindingSpecsCreatedOrUpDatedCondition,
+			addonsv1alpha1.VerrazzanoFleetBindingsReadyCondition,
+		}},
+		patch.WithStatusObservedGeneration{},
+	)
 }
