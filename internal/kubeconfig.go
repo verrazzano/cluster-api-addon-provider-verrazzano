@@ -171,7 +171,7 @@ func writeInClusterKubeconfigToFile(ctx context.Context, filePath string, client
 func (k *KubeconfigGetter) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(ctx, fleetBindingName, kubeconfig, clusterName)
+	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)
 	if err != nil {
 		log.Error(err, "failed to get k8s rest config")
 		return nil, errors.Wrap(err, "failed to get k8s rest config")
@@ -182,7 +182,7 @@ func (k *KubeconfigGetter) GetWorkloadClusterK8sClient(ctx context.Context, flee
 // GetWorkloadClusterDynamicK8sClient returns the Dynamic K8s client of an OCNE cluster if it exists.
 func (k *KubeconfigGetter) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
-	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(ctx, fleetBindingName, kubeconfig, clusterName)
+	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)
 	if err != nil {
 		log.Error(err, "failed to get k8s rest config")
 		return nil, errors.Wrap(err, "failed to get k8s rest config")
