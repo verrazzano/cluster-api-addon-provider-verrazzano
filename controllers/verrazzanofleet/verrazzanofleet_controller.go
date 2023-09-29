@@ -146,6 +146,7 @@ func (r *VerrazzanoFleetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			controllerutil.AddFinalizer(verrazzanoFleet, addonsv1alpha1.VerrazzanoFleetFinalizer)
 			if err := patchVerrazzanoFleet(ctx, patchHelper, verrazzanoFleet, r); err != nil {
 				// TODO: Should we try to set the error here? If we can't add the finalizer we likely can't update the status either.
+				log.Error(err, "Failed to patch the Verrazzano Fleet object"+err.Error())
 				return ctrl.Result{}, err
 			}
 		}
