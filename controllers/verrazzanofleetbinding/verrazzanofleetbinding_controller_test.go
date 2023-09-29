@@ -20,6 +20,8 @@ package verrazzanofleetbinding
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
@@ -27,7 +29,6 @@ import (
 	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"testing"
 
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal/mocks"
@@ -72,7 +73,7 @@ var (
 				Enabled: true,
 			},
 			ImagePullSecrets: []addonsv1alpha1.SecretName{
-				addonsv1alpha1.SecretName{
+				{
 					Name: "test-secret",
 				},
 			},
@@ -109,7 +110,7 @@ var (
 				Enabled: true,
 			},
 			ImagePullSecrets: []addonsv1alpha1.SecretName{
-				addonsv1alpha1.SecretName{
+				{
 					Name: "test-secret",
 				},
 			},
@@ -122,13 +123,29 @@ var (
 	}
 
 	helmaddonsSpec = &models.HelmModuleAddons{
-		RepoURL:     "ghcr.io/verrazzano",
-		ChartName:   "verrazzano-platform-operator",
-		ReleaseName: "verrazzano-platform-operator",
-		Version:     "2.0.0",
+		RepoURL:          "/tmp/charts/verrazzano-platform-operator/",
+		ChartName:        "verrazzano-platform-operator",
+		ReleaseName:      "verrazzano-platform-operator",
+		ReleaseNamespace: "verrazzano-install",
+		Version:          "",
+		ValuesTemplate:   valuesTemplate,
+		Local:            true,
+		Options:          nil,
 	}
 	errInternal = fmt.Errorf("internal error")
 )
+
+const valuesTemplate = `# Copyright (c) 2023, Oracle and/or its affiliates.
+
+createNamespace: false
+image: ghcr.io/verrazzano-platform-operator:v0.1.0
+imagePullPolicy: Always
+global:
+  registry: ghcr.io
+  repository: ghcr.io
+  imagePullSecrets:
+    - test-secret
+`
 
 func generateVPOData() map[string]string {
 	data := make(map[string]string)
@@ -168,10 +185,10 @@ func TestReconcileNormal(t *testing.T) {
 		expectedError          string
 	}{
 		{
-			name:                   "succesfully install a Helm release",
+			name:                   "successfully install a Helm release",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
 			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, fleetBinding).Return(&helmRelease.Release{
+				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, valuesTemplate, helmaddonsSpec, fleetBinding).Return(&helmRelease.Release{
 					Name:    "test-release",
 					Version: 1,
 					Info: &helmRelease.Info{
