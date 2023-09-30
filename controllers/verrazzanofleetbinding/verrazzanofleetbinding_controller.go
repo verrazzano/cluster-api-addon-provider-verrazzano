@@ -21,8 +21,9 @@ package verrazzanofleetbinding
 import (
 	"context"
 	"fmt"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"strings"
+
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 
 	"github.com/pkg/errors"
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
@@ -120,7 +121,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 		Name:      verrazzanoFleetBinding.Spec.ClusterRef.Name,
 	}
 
-	k := internal.KubeconfigGetter{}
+	k := internal.NewGetter()
 	client := &internal.HelmClient{}
 
 	// examine DeletionTimestamp to determine if object is under deletion
@@ -206,7 +207,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 // It will set the ReleaseName on the VerrazzanoFleetBinding if the name is generated and also set the release status and release revision.
 func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
+	k := internal.GetterFunc
 
 	log.V(2).Info("Reconciling VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
@@ -240,7 +241,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 			// TODO: should we set the error state again here?
 		}
 
-		err = setVerrazzanoPlatformOperatorConditions(ctx, verrazzanoFleetBinding, kubeconfig)
+		err = setVerrazzanoPlatformOperatorConditions(ctx, client, verrazzanoFleetBinding, kubeconfig)
 		if err != nil {
 			log.Error(err, "Failed to update conditions for VPO")
 			return err
@@ -375,10 +376,9 @@ func patchVerrazzanoFleetBinding(ctx context.Context, patchHelper *patch.Helper,
 	)
 }
 
-func setVerrazzanoPlatformOperatorConditions(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
+func setVerrazzanoPlatformOperatorConditions(ctx context.Context, c internal.Client, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
-	k8sclient, err := k.GetWorkloadClusterK8sClient(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	k8sclient, err := c.GetWorkloadClusterK8sClient(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	if err != nil {
 		log.Error(err, "Unable to get k8s client")
 		return err

@@ -21,6 +21,11 @@ package internal
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path"
+	"strings"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
@@ -34,10 +39,7 @@ import (
 	helmCli "helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"net/url"
-	"os"
-	"path"
-	"strings"
+	"k8s.io/client-go/kubernetes"
 
 	"gopkg.in/yaml.v2"
 	helmVals "helm.sh/helm/v3/pkg/cli/values"
@@ -55,6 +57,7 @@ type Client interface {
 	InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (*helmRelease.Release, error)
 	GetHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.Release, error)
 	UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error)
+	GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error)
 }
 
 type HelmClient struct{}

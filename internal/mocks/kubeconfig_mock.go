@@ -27,8 +27,8 @@ import (
 
 	models "github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	gomock "go.uber.org/mock/gomock"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	dynamic "k8s.io/client-go/dynamic"
-	kubernetes "k8s.io/client-go/kubernetes"
 	v1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -56,31 +56,31 @@ func (m *MockGetter) EXPECT() *MockGetterMockRecorder {
 }
 
 // CreateOrUpdateVerrazzano mocks base method.
-func (m *MockGetter) CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName, vzspec string) error {
+func (m *MockGetter) CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateVerrazzano", ctx, fleetBindingName, kubeconfig, clusterName, vzspec)
+	ret := m.ctrl.Call(m, "CreateOrUpdateVerrazzano", ctx, fleetBindingName, kubeconfig, clusterName, vzSpecRawExtension)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOrUpdateVerrazzano indicates an expected call of CreateOrUpdateVerrazzano.
-func (mr *MockGetterMockRecorder) CreateOrUpdateVerrazzano(ctx, fleetBindingName, kubeconfig, clusterName, vzspec interface{}) *gomock.Call {
+func (mr *MockGetterMockRecorder) CreateOrUpdateVerrazzano(ctx, fleetBindingName, kubeconfig, clusterName, vzSpecRawExtension interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateVerrazzano", reflect.TypeOf((*MockGetter)(nil).CreateOrUpdateVerrazzano), ctx, fleetBindingName, kubeconfig, clusterName, vzspec)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateVerrazzano", reflect.TypeOf((*MockGetter)(nil).CreateOrUpdateVerrazzano), ctx, fleetBindingName, kubeconfig, clusterName, vzSpecRawExtension)
 }
 
-// DeleteVerrazzano mocks base method.
-func (m *MockGetter) DeleteVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error {
+// DeleteVerrazzanoFromRemoteCluster mocks base method.
+func (m *MockGetter) DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteVerrazzano", ctx, fleetBindingName, kubeconfig, clusterName)
+	ret := m.ctrl.Call(m, "DeleteVerrazzanoFromRemoteCluster", ctx, vz, fleetBindingName, kubeconfig, clusterName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteVerrazzano indicates an expected call of DeleteVerrazzano.
-func (mr *MockGetterMockRecorder) DeleteVerrazzano(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
+// DeleteVerrazzanoFromRemoteCluster indicates an expected call of DeleteVerrazzanoFromRemoteCluster.
+func (mr *MockGetterMockRecorder) DeleteVerrazzanoFromRemoteCluster(ctx, vz, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVerrazzano", reflect.TypeOf((*MockGetter)(nil).DeleteVerrazzano), ctx, fleetBindingName, kubeconfig, clusterName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVerrazzanoFromRemoteCluster", reflect.TypeOf((*MockGetter)(nil).DeleteVerrazzanoFromRemoteCluster), ctx, vz, fleetBindingName, kubeconfig, clusterName)
 }
 
 // GetClusterKubeconfig mocks base method.
@@ -98,19 +98,19 @@ func (mr *MockGetterMockRecorder) GetClusterKubeconfig(ctx, cluster interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterKubeconfig", reflect.TypeOf((*MockGetter)(nil).GetClusterKubeconfig), ctx, cluster)
 }
 
-// GetVerrazzano mocks base method.
-func (m *MockGetter) GetVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
+// GetVerrazzanoFromRemoteCluster mocks base method.
+func (m *MockGetter) GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVerrazzano", ctx, fleetBindingName, kubeconfig, clusterName)
+	ret := m.ctrl.Call(m, "GetVerrazzanoFromRemoteCluster", ctx, fleetBindingName, kubeconfig, clusterName)
 	ret0, _ := ret[0].(*models.Verrazzano)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetVerrazzano indicates an expected call of GetVerrazzano.
-func (mr *MockGetterMockRecorder) GetVerrazzano(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
+// GetVerrazzanoFromRemoteCluster indicates an expected call of GetVerrazzanoFromRemoteCluster.
+func (mr *MockGetterMockRecorder) GetVerrazzanoFromRemoteCluster(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVerrazzano", reflect.TypeOf((*MockGetter)(nil).GetVerrazzano), ctx, fleetBindingName, kubeconfig, clusterName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVerrazzanoFromRemoteCluster", reflect.TypeOf((*MockGetter)(nil).GetVerrazzanoFromRemoteCluster), ctx, fleetBindingName, kubeconfig, clusterName)
 }
 
 // GetWorkloadClusterDynamicK8sClient mocks base method.
@@ -126,21 +126,6 @@ func (m *MockGetter) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fle
 func (mr *MockGetterMockRecorder) GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterDynamicK8sClient", reflect.TypeOf((*MockGetter)(nil).GetWorkloadClusterDynamicK8sClient), ctx, fleetBindingName, kubeconfig, clusterName)
-}
-
-// GetWorkloadClusterK8sClient mocks base method.
-func (m *MockGetter) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWorkloadClusterK8sClient", ctx, fleetBindingName, kubeconfig, clusterName)
-	ret0, _ := ret[0].(*kubernetes.Clientset)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetWorkloadClusterK8sClient indicates an expected call of GetWorkloadClusterK8sClient.
-func (mr *MockGetterMockRecorder) GetWorkloadClusterK8sClient(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterK8sClient", reflect.TypeOf((*MockGetter)(nil).GetWorkloadClusterK8sClient), ctx, fleetBindingName, kubeconfig, clusterName)
 }
 
 // WaitForVerrazzanoUninstallCompletion mocks base method.
