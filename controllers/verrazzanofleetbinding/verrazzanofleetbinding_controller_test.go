@@ -76,7 +76,7 @@ var (
 			},
 			Verrazzano: &addonsv1alpha1.Verrazzano{
 				Spec: &runtime.RawExtension{
-					Object: nil,
+					Raw: []byte(`{"spec": {"version": "v2.0.0"}}`),
 				},
 			},
 		},
