@@ -28,7 +28,6 @@ import (
 	models "github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	gomock "go.uber.org/mock/gomock"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	dynamic "k8s.io/client-go/dynamic"
 	v1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -111,21 +110,6 @@ func (m *MockGetter) GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBi
 func (mr *MockGetterMockRecorder) GetVerrazzanoFromRemoteCluster(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVerrazzanoFromRemoteCluster", reflect.TypeOf((*MockGetter)(nil).GetVerrazzanoFromRemoteCluster), ctx, fleetBindingName, kubeconfig, clusterName)
-}
-
-// GetWorkloadClusterDynamicK8sClient mocks base method.
-func (m *MockGetter) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWorkloadClusterDynamicK8sClient", ctx, fleetBindingName, kubeconfig, clusterName)
-	ret0, _ := ret[0].(dynamic.Interface)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetWorkloadClusterDynamicK8sClient indicates an expected call of GetWorkloadClusterDynamicK8sClient.
-func (mr *MockGetterMockRecorder) GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterDynamicK8sClient", reflect.TypeOf((*MockGetter)(nil).GetWorkloadClusterDynamicK8sClient), ctx, fleetBindingName, kubeconfig, clusterName)
 }
 
 // WaitForVerrazzanoUninstallCompletion mocks base method.

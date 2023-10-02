@@ -251,7 +251,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 
 	if verrazzanoFleetBinding.Spec.Verrazzano != nil {
 		if verrazzanoFleetBinding.Spec.Verrazzano.Spec != nil {
-			err = k.CreateOrUpdateVerrazzano(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name, verrazzanoFleetBinding.Spec.Verrazzano.Spec)
+			err = k.CreateOrUpdateVerrazzano(ctx, client, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name, verrazzanoFleetBinding.Spec.Verrazzano.Spec)
 			if err != nil {
 				log.Error(err, "Failed to create or update verrazzano")
 				return err
@@ -273,24 +273,24 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 // reconcileDelete handles VerrazzanoFleetBinding deletion. This will uninstall the VerrazzanoFleetBinding on the Cluster or return nil if the VerrazzanoFleetBinding is not found.
 func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
+	c := internal.HelmClient{}
 
 	log.V(2).Info("Deleting VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
-	vz, err := k.GetVerrazzanoFromRemoteCluster(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	vz, err := c.GetVerrazzanoFromRemoteCluster(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	if err != nil {
 		log.Error(err, "unable to fetch verrazzano install from workload cluster")
 		return err
 	}
 
 	if vz != nil {
-		err = k.DeleteVerrazzanoFromRemoteCluster(ctx, vz, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+		err = c.DeleteVerrazzanoFromRemoteCluster(ctx, vz, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 		if err != nil {
 			log.Error(err, "failed to delete verrazzano")
 			return err
 		}
 
-		err = k.WaitForVerrazzanoUninstallCompletion(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+		err = c.WaitForVerrazzanoUninstallCompletion(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 		if err != nil {
 			log.Error(err, "failed to uninstall verrazzano completely")
 			return err
@@ -421,8 +421,8 @@ func setVerrazzanoPlatformOperatorConditions(ctx context.Context, c internal.Cli
 
 func setVerrazzanoConditions(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
-	vz, err := k.GetVerrazzanoFromRemoteCluster(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	c := internal.HelmClient{}
+	vz, err := c.GetVerrazzanoFromRemoteCluster(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	if err != nil {
 		log.Error(err, "unable to fetch verrazzano install from workload cluster")
 		return err

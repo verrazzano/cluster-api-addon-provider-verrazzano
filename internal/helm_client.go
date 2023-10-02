@@ -33,20 +33,20 @@ import (
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/semver"
+	"gopkg.in/yaml.v2"
 	helmAction "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	helmLoader "helm.sh/helm/v3/pkg/chart/loader"
 	helmCli "helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/registry"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/kubernetes"
-
-	"gopkg.in/yaml.v2"
 	helmVals "helm.sh/helm/v3/pkg/cli/values"
 	helmGetter "helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/registry"
 	helmRelease "helm.sh/helm/v3/pkg/release"
 	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
@@ -58,6 +58,7 @@ type Client interface {
 	GetHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.Release, error)
 	UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error)
 	GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (kubernetes.Interface, error)
+	GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error)
 }
 
 type HelmClient struct{}

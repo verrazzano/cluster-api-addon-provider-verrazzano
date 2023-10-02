@@ -23,11 +23,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/pkg/errors"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -42,7 +41,6 @@ import (
 
 type Getter interface {
 	GetClusterKubeconfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error)
-	GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error)
 	CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error
 	GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error)
 	DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error
@@ -188,7 +186,7 @@ func (c *HelmClient) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindi
 }
 
 // GetWorkloadClusterDynamicK8sClient returns the Dynamic K8s client of an OCNE cluster if it exists.
-func (k *KubeconfigGetter) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
+func (c *HelmClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
 	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)
 	if err != nil {

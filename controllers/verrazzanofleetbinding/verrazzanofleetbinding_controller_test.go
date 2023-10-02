@@ -26,7 +26,6 @@ import (
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal/mocks"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"go.uber.org/mock/gomock"
@@ -34,12 +33,16 @@ import (
 	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8sfakedynamic "k8s.io/client-go/dynamic/fake"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	corev1Cli "k8s.io/client-go/kubernetes/typed/core/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
@@ -76,7 +79,7 @@ var (
 			},
 			Verrazzano: &addonsv1alpha1.Verrazzano{
 				Spec: &runtime.RawExtension{
-					Raw: []byte(`{"spec": {"version": "v2.0.0"}}`),
+					Raw: []byte(`{"version": "v2.0.0"}`),
 				},
 			},
 		},
@@ -119,30 +122,23 @@ var (
 		},
 	}
 
-	helmaddonsSpec = &models.HelmModuleAddons{
-		RepoURL:          "/tmp/charts/verrazzano-platform-operator/",
-		ChartName:        "verrazzano-platform-operator",
-		ReleaseName:      "verrazzano-platform-operator",
-		ReleaseNamespace: "verrazzano-install",
-		Version:          "",
-		ValuesTemplate:   valuesTemplate,
-		Local:            true,
-		Options:          nil,
-	}
 	errInternal = fmt.Errorf("internal error")
+
+	SchemeGroupVersion = schema.GroupVersion{Group: "install.verrazzano.io", Version: "v1beta1"}
+	SchemeBuilder      = &scheme.Builder{GroupVersion: SchemeGroupVersion}
+	AddToScheme        = SchemeBuilder.AddToScheme
 )
 
-const valuesTemplate = `# Copyright (c) 2023, Oracle and/or its affiliates.
-
-createNamespace: false
-image: ghcr.io/verrazzano-platform-operator:v0.1.0
-imagePullPolicy: Always
-global:
-  registry: ghcr.io
-  repository: ghcr.io
-  imagePullSecrets:
-    - test-secret
-`
+func newTestVZ() *unstructured.Unstructured {
+	vz := &unstructured.Unstructured{
+		Object: make(map[string]interface{}),
+	}
+	vz.SetAPIVersion(fmt.Sprintf("%s/%s", constants.APIGroup, constants.APIVersionBeta1))
+	vz.SetKind(constants.VerrazzanoDomainKind)
+	vz.SetName(constants.VerrazzanoInstallName)
+	vz.SetNamespace(constants.VerrazzanoInstallNamespace)
+	return vz
+}
 
 func generateVPOData() map[string]string {
 	data := make(map[string]string)
@@ -174,6 +170,18 @@ func generateVPOData() map[string]string {
 
 func TestReconcileNormal(t *testing.T) {
 
+	var getWorkloadClusterK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
+		c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+	}
+
+	var getWorkloadClusterDynamicK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
+		scheme := runtime.NewScheme()
+		_ = AddToScheme(scheme)
+
+		c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ()), nil).Times(1)
+	}
+
 	testcases := []struct {
 		name                   string
 		verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding
@@ -194,9 +202,8 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				},
+				getWorkloadClusterK8sClientMock,
+				getWorkloadClusterDynamicK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				//_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -211,7 +218,7 @@ func TestReconcileNormal(t *testing.T) {
 			expectedError: "",
 		},
 		{
-			name:                   "succesfully install a Helm release with a generated name",
+			name:                   "successfully install a Helm release with a generated name",
 			verrazzanoFleetBinding: fleetBinding,
 			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
@@ -223,6 +230,7 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
+				getWorkloadClusterK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -248,6 +256,7 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
+				getWorkloadClusterK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				t.Logf("VerrazzanoFleetBinding: %+v", vfb)
@@ -270,6 +279,7 @@ func TestReconcileNormal(t *testing.T) {
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
 					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
 				},
+				getWorkloadClusterK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -297,6 +307,7 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
+				getWorkloadClusterK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
