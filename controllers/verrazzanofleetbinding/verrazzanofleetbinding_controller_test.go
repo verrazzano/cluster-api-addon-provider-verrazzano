@@ -344,7 +344,6 @@ func TestReconcileNormal(t *testing.T) {
 			r = &VerrazzanoFleetBindingReconciler{
 				Client: fake.NewClientBuilder().
 					WithScheme(fakeScheme).
-					WithObjects(tc.verrazzanoFleetBinding).
 					WithStatusSubresource(&addonsv1alpha1.VerrazzanoFleetBinding{}).
 					Build(),
 			}

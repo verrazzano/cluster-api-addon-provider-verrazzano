@@ -71,10 +71,10 @@ func (mr *MockClientMockRecorder) GetHelmRelease(ctx, kubeconfig, spec interface
 }
 
 // GetWorkloadClusterK8sClient mocks base method.
-func (m *MockClient) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error) {
+func (m *MockClient) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (kubernetes.Interface, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWorkloadClusterK8sClient", ctx, fleetBindingName, kubeconfig, clusterName)
-	ret0, _ := ret[0].(*kubernetes.Clientset)
+	ret0, _ := ret[0].(kubernetes.Interface)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

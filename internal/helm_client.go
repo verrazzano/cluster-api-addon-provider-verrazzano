@@ -57,7 +57,7 @@ type Client interface {
 	InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig, values string, spec *models.HelmModuleAddons, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (*helmRelease.Release, error)
 	GetHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.Release, error)
 	UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error)
-	GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error)
+	GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (kubernetes.Interface, error)
 }
 
 type HelmClient struct{}
