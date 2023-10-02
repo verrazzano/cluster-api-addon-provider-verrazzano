@@ -174,22 +174,19 @@ func generateVPOData() map[string]string {
 
 func TestReconcileNormal(t *testing.T) {
 
-	r := &VerrazzanoFleetBindingReconciler{}
-
 	testcases := []struct {
 		name                   string
 		verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding
-		clientExpect           func(g *WithT, c *mocks.MockClientMockRecorder)
-		clientExpect2          []func(g *WithT, c *mocks.MockClientMockRecorder)
+		clientExpect           []func(g *WithT, c *mocks.MockClientMockRecorder)
 		expect                 func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding)
 		expectedError          string
 	}{
 		{
 			name:                   "successfully install a Helm release",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect2: []func(g *WithT, c *mocks.MockClientMockRecorder){
+			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), valuesTemplate, helmaddonsSpec, gomock.Any()).Return(&helmRelease.Release{
+					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
 						Name:    "test-release",
 						Version: 1,
 						Info: &helmRelease.Info{
@@ -200,15 +197,6 @@ func TestReconcileNormal(t *testing.T) {
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
 					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 				},
-			},
-			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), valuesTemplate, helmaddonsSpec, gomock.Any()).Return(&helmRelease.Release{
-					Name:    "test-release",
-					Version: 1,
-					Info: &helmRelease.Info{
-						Status: helmRelease.StatusDeployed,
-					},
-				}, nil).Times(1)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				//_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -225,14 +213,16 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "succesfully install a Helm release with a generated name",
 			verrazzanoFleetBinding: fleetBinding,
-			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, valuesTemplate, helmaddonsSpec, fleetBinding).Return(&helmRelease.Release{
-					Name:    "test-release",
-					Version: 1,
-					Info: &helmRelease.Info{
-						Status: helmRelease.StatusDeployed,
-					},
-				}, nil).Times(1)
+			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+						Name:    "test-release",
+						Version: 1,
+						Info: &helmRelease.Info{
+							Status: helmRelease.StatusDeployed,
+						},
+					}, nil).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -248,14 +238,16 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "Helm release pending",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, defaultProxy.Spec).Return(&helmRelease.Release{
-					Name:    "test-release",
-					Version: 1,
-					Info: &helmRelease.Info{
-						Status: helmRelease.StatusPendingInstall,
-					},
-				}, nil).Times(1)
+			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+						Name:    "test-release",
+						Version: 1,
+						Info: &helmRelease.Info{
+							Status: helmRelease.StatusPendingInstall,
+						},
+					}, nil).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				t.Logf("VerrazzanoFleetBinding: %+v", vfb)
@@ -274,8 +266,10 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "Helm client returns error",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, defaultProxy).Return(nil, errInternal).Times(1)
+			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -293,14 +287,16 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "Helm release in a failed state, no client error",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.InstallOrUpgradeHelmRelease(ctx, kubeconfig, "values", helmaddonsSpec, defaultProxy).Return(&helmRelease.Release{
-					Name:    "test-release",
-					Version: 1,
-					Info: &helmRelease.Info{
-						Status: helmRelease.StatusFailed,
-					},
-				}, nil).Times(1)
+			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+						Name:    "test-release",
+						Version: 1,
+						Info: &helmRelease.Info{
+							Status: helmRelease.StatusFailed,
+						},
+					}, nil).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -327,7 +323,6 @@ func TestReconcileNormal(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			clientMock := mocks.NewMockClient(mockCtrl)
-			//tc.clientExpect(g, clientMock.EXPECT())
 
 			internal.GetCoreV1Func = func() (corev1Cli.CoreV1Interface, error) {
 				configMap := &corev1.ConfigMap{
@@ -341,14 +336,14 @@ func TestReconcileNormal(t *testing.T) {
 			}
 			defer func() { internal.GetCoreV1Func = k8sutils.GetCoreV1Client }()
 
-			r = &VerrazzanoFleetBindingReconciler{
+			r := &VerrazzanoFleetBindingReconciler{
 				Client: fake.NewClientBuilder().
 					WithScheme(fakeScheme).
 					WithStatusSubresource(&addonsv1alpha1.VerrazzanoFleetBinding{}).
 					Build(),
 			}
 
-			for _, i := range tc.clientExpect2 {
+			for _, i := range tc.clientExpect {
 				i(g, clientMock.EXPECT())
 			}
 
