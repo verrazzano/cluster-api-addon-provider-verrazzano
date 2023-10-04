@@ -45,6 +45,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
+type v8ospec struct {
+	Version string `json:"version"`
+}
+
 var (
 	kubeconfig = "test-kubeconfig"
 
@@ -79,7 +83,7 @@ var (
 			},
 			Verrazzano: &addonsv1alpha1.Verrazzano{
 				Spec: &runtime.RawExtension{
-					Raw: []byte(`{"version": "v2.0.0"}`),
+					Raw: []byte(`{"version": "v2.0.0", "profile": "none", "components": {"certManager": {"enabled": true}}}`),
 				},
 			},
 		},

@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/yaml"
 )
 
 // GetVerrazzanoFromRemoteCluster fetches the Verrazzano object from a remote cluster.
@@ -150,17 +149,16 @@ func PatchVerrazzano(ctx context.Context, client Client, fleetBindingName, kubec
 		Resource: constants.VerrazzanoResource,
 	}
 
-	data, err := yaml.Marshal(newObj.Object)
+	data, err := json.Marshal(newObj.Object)
 	if err != nil {
-		log.Error(err, "failed in yaml marshall")
+		log.Error(err, "failed in json marshall")
 		return err
 	}
 	log.V(5).Info("verrazzano spec applied", string(data))
 
 	//Apply the Yaml
-	_, err = dclient.Resource(gvr).Namespace(newObj.GetNamespace()).Patch(ctx, newObj.GetName(), types.ApplyPatchType, data, v1.PatchOptions{
-		FieldManager: "verrazzano-platform-controller",
-	})
+	_, err = dclient.Resource(gvr).Namespace(constants.VerrazzanoInstallNamespace).Patch(ctx, constants.VerrazzanoInstallName, types.StrategicMergePatchType, data, v1.PatchOptions{
+		FieldManager: "verrazzano-platform-controller"})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to apply verrazzano spec"))
 		return err
@@ -187,10 +185,10 @@ func processVerrazzanoSpec(ctx context.Context, inputObj *unstructured.Unstructu
 		log.Error(err, "unable to set nested field")
 		return newObj, err
 	}
-	newObj.SetAPIVersion(fmt.Sprintf("%s/%s", constants.APIGroup, constants.APIVersionBeta1))
-	newObj.SetKind(constants.VerrazzanoDomainKind)
-	newObj.SetName(constants.VerrazzanoInstallName)
-	newObj.SetNamespace(constants.VerrazzanoInstallNamespace)
+	//newObj.SetAPIVersion(fmt.Sprintf("%s/%s", constants.APIGroup, constants.APIVersionBeta1))
+	//newObj.SetKind(constants.VerrazzanoDomainKind)
+	//newObj.SetName(constants.VerrazzanoInstallName)
+	//newObj.SetNamespace(constants.VerrazzanoInstallNamespace)
 
 	return newObj, nil
 
