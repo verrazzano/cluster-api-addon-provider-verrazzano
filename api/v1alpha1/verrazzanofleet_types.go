@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	// HelmChartFinalizer is the finalizer used by the VerrazzanoFleet controller to cleanup add-on resources when
+	// VerrazzanoFleetFinalizer is the finalizer used by the VerrazzanoFleet controller to cleanup add-on resources when
 	// a VerrazzanoFleet is being deleted.
 	VerrazzanoFleetFinalizer = "verrazzanofleet.addons.cluster.x-k8s.io"
 )
