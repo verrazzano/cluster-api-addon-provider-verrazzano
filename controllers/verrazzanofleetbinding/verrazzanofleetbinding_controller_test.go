@@ -322,7 +322,6 @@ func TestReconcileNormal(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
-			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
