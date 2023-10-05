@@ -178,12 +178,12 @@ func TestReconcileNormal(t *testing.T) {
 		c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 	}
 
+	scheme := runtime.NewScheme()
+	_ = AddToScheme(scheme)
+	dynClient := k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
 	var getWorkloadClusterDynamicK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
-		scheme := runtime.NewScheme()
-		_ = AddToScheme(scheme)
-
 		c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ()), nil).Times(1)
+			Return(dynClient, nil).Times(2)
 	}
 
 	testcases := []struct {

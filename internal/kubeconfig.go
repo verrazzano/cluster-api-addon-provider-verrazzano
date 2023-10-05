@@ -42,7 +42,6 @@ import (
 type Getter interface {
 	GetClusterKubeconfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error)
 	CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error
-	GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error)
 	DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error
 	WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error
 }

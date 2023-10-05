@@ -20,7 +20,7 @@ import (
 )
 
 // GetVerrazzanoFromRemoteCluster fetches the Verrazzano object from a remote cluster.
-func (c *HelmClient) GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
+func GetVerrazzanoFromRemoteCluster(ctx context.Context, c Client, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
 	log := controllerruntime.LoggerFrom(ctx)
 	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
 	if err != nil {
@@ -92,7 +92,7 @@ func (c *HelmClient) WaitForVerrazzanoUninstallCompletion(ctx context.Context, f
 	totalSeconds := timeParse.Seconds()
 
 	for !done {
-		vz, err := c.GetVerrazzanoFromRemoteCluster(ctx, fleetBindingName, kubeconfig, clusterName)
+		vz, err := GetVerrazzanoFromRemoteCluster(ctx, c, fleetBindingName, kubeconfig, clusterName)
 		if err != nil {
 			log.Error(err, "unable to fetch verrazzano install from workload cluster")
 			return err
