@@ -364,6 +364,12 @@ func TestReconcileNormal(t *testing.T) {
 }
 
 func TestReconcileDelete(t *testing.T) {
+	var dynClient *k8sfakedynamic.FakeDynamicClient
+
+	// Initialize scheme for all test cases
+	scheme := runtime.NewScheme()
+	_ = AddToScheme(scheme)
+
 	testcases := []struct {
 		name                   string
 		verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding
@@ -383,6 +389,9 @@ func TestReconcileDelete(t *testing.T) {
 					},
 				}, nil).Times(1)
 				c.UninstallHelmRelease(ctx, kubeconfig, defaultProxy.DeepCopy().Spec).Return(&helmRelease.UninstallReleaseResponse{}, nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(dynClient, nil).Times(2)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
@@ -434,6 +443,7 @@ func TestReconcileDelete(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			clientMock := mocks.NewMockClient(mockCtrl)
+			dynClient = k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
 			tc.clientExpect(g, clientMock.EXPECT())
 
 			r := &VerrazzanoFleetBindingReconciler{
