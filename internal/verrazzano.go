@@ -166,16 +166,8 @@ func PatchVerrazzano(ctx context.Context, client Client, fleetBindingName, kubec
 	return nil
 }
 
+// processVerrazzanoSpec - wrap the updates in a spec field
 func processVerrazzanoSpec(ctx context.Context, inputObj *unstructured.Unstructured) (unstructured.Unstructured, error) {
-	/*
-		apiVersion: install.verrazzano.io/v1beta1
-		kind: Verrazzano
-		metadata:
-		  name: verrazzano
-		  namespace: default
-	*/
-	// overwrite above contents even if specified in input spec
-
 	log := controllerruntime.LoggerFrom(ctx)
 	var newObj unstructured.Unstructured
 	if newObj.Object == nil {
@@ -185,11 +177,5 @@ func processVerrazzanoSpec(ctx context.Context, inputObj *unstructured.Unstructu
 		log.Error(err, "unable to set nested field")
 		return newObj, err
 	}
-	//newObj.SetAPIVersion(fmt.Sprintf("%s/%s", constants.APIGroup, constants.APIVersionBeta1))
-	//newObj.SetKind(constants.VerrazzanoDomainKind)
-	//newObj.SetName(constants.VerrazzanoInstallName)
-	//newObj.SetNamespace(constants.VerrazzanoInstallNamespace)
-
 	return newObj, nil
-
 }

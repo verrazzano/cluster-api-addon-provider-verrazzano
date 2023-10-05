@@ -212,13 +212,9 @@ func TestReconcileNormal(t *testing.T) {
 				getWorkloadClusterDynamicK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-				//_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-				//g.Expect(ok).To(BeFalse())
 				g.Expect(vfb.Status.Revision).To(Equal(1))
-				g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusDeployed))
-
-				g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
-				g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
+				g.Expect(conditions.Has(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
+				g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
 
 			},
 			expectedError: "",
