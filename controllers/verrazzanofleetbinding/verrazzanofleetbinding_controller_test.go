@@ -182,11 +182,6 @@ func TestReconcileNormal(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = AddToScheme(scheme)
 
-	var getWorkloadClusterDynamicK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
-		c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(dynClient, nil).Times(2)
-	}
-
 	testcases := []struct {
 		name                   string
 		verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding
@@ -210,13 +205,15 @@ func TestReconcileNormal(t *testing.T) {
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
 					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 				},
-				getWorkloadClusterDynamicK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(dynClient, nil).Times(2)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				g.Expect(vfb.Status.Revision).To(Equal(1))
 				g.Expect(conditions.Has(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
 				g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
-
 			},
 			expectedError: "",
 		},
@@ -236,7 +233,10 @@ func TestReconcileNormal(t *testing.T) {
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
 					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 				},
-				getWorkloadClusterDynamicK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(dynClient, nil).Times(2)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				//_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
