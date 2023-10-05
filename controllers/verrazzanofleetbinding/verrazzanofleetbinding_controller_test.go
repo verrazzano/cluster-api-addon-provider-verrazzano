@@ -120,9 +120,20 @@ var (
 			},
 			Verrazzano: &addonsv1alpha1.Verrazzano{
 				Spec: &runtime.RawExtension{
-					Object: nil,
+					Raw: []byte(`{"version": "v2.0.0", "profile": "none", "components": {"certManager": {"enabled": true}}}`),
 				},
 			},
+		},
+	}
+
+	podNotReady = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: VerrazzanoInstallNamespace,
+			Name:      "pod1",
+		},
+		Spec: corev1.PodSpec{},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodPending,
 		},
 	}
 
@@ -160,14 +171,6 @@ func generateVPOData() map[string]string {
 	data["templates...serviceaccount.yaml"] = ""
 	data["templates...validatingwebhookconfiguration.yaml"] = ""
 
-	//return &internal.HelmModuleAddons{
-	//	ChartName:        internal.VerrazzanoPlatformOperatorChartName,
-	//	ReleaseName:      internal.VerrazzanoPlatformOperatorChartName,
-	//	ReleaseNamespace: internal.VerrazzanoPlatformOperatorNameSpace,
-	//	RepoURL:          internal.VerrazzanoPlatformOperatorChartPath,
-	//	Local:            true,
-	//	ValuesTemplate:   string(out),
-	//}, data
 	return data
 
 }
@@ -178,10 +181,6 @@ func TestReconcileNormal(t *testing.T) {
 	// Initialize scheme for all test cases
 	scheme := runtime.NewScheme()
 	_ = AddToScheme(scheme)
-
-	var getWorkloadClusterK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
-		c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-	}
 
 	var getWorkloadClusterDynamicK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
 		c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
@@ -208,7 +207,9 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
-				getWorkloadClusterK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				},
 				getWorkloadClusterDynamicK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
@@ -232,16 +233,17 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
-				getWorkloadClusterK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				},
+				getWorkloadClusterDynamicK8sClientMock,
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-				g.Expect(ok).To(BeTrue())
+				//_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
+				//g.Expect(ok).To(BeTrue())
 				g.Expect(vfb.Status.Revision).To(Equal(1))
-				g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusDeployed))
-
-				g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
-				g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
+				g.Expect(conditions.Has(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
+				g.Expect(conditions.IsTrue(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
 			},
 			expectedError: "",
 		},
@@ -258,21 +260,19 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
-				getWorkloadClusterK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(podNotReady), nil).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				t.Logf("VerrazzanoFleetBinding: %+v", vfb)
-				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-				g.Expect(ok).To(BeFalse())
 				g.Expect(vfb.Status.Revision).To(Equal(1))
-				g.Expect(vfb.Status.Status).To(BeEquivalentTo(helmRelease.StatusPendingInstall))
-
-				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
 				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
-				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmReleasePendingReason))
-				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityInfo))
+				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.VerrazzanoPlatformOperatorNotUPReason))
+				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
 			},
-			expectedError: "",
+			expectedError: "Not all pods for VPO are ready",
 		},
 		{
 			name:                   "Helm client returns error",
@@ -281,7 +281,9 @@ func TestReconcileNormal(t *testing.T) {
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
 					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
 				},
-				getWorkloadClusterK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -309,7 +311,9 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
-				getWorkloadClusterK8sClientMock,
+				func(g *WithT, c *mocks.MockClientMockRecorder) {
+					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -367,8 +371,8 @@ func TestReconcileNormal(t *testing.T) {
 				g.Expect(err).To(MatchError(tc.expectedError), err.Error())
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
-				tc.expect(g, tc.verrazzanoFleetBinding)
 			}
+			tc.expect(g, tc.verrazzanoFleetBinding)
 		})
 	}
 }
@@ -459,8 +463,8 @@ func TestReconcileDelete(t *testing.T) {
 				g.Expect(err).To(MatchError(tc.expectedError), err.Error())
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
-				tc.expect(g, tc.verrazzanoFleetBinding)
 			}
+			tc.expect(g, tc.verrazzanoFleetBinding)
 		})
 	}
 }

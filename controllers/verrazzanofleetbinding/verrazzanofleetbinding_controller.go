@@ -404,6 +404,7 @@ func setVerrazzanoPlatformOperatorConditions(ctx context.Context, c internal.Cli
 				// this will be the vpo pod
 				conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.VerrazzanoPlatformOperatorNotRunningReason, clusterv1.ConditionSeverityError, "Verrazzano Platform Operator pods are not running")
 			}
+			podReadyVPO = append(podReadyVPO, false)
 		} else {
 			podReadyVPO = append(podReadyVPO, k8sutils.IsPodReady(ctx, &pod))
 		}
