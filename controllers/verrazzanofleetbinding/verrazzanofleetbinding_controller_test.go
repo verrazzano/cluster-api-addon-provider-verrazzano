@@ -271,6 +271,7 @@ func TestReconcileNormal(t *testing.T) {
 				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
 				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.VerrazzanoPlatformOperatorNotUPReason))
 				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
+				g.Expect(releaseReady.Message).To(Equal("Verrazzano Platform Operator pods are not running"))
 			},
 			expectedError: "Not all pods for VPO are ready",
 		},
@@ -288,7 +289,6 @@ func TestReconcileNormal(t *testing.T) {
 				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
 				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
 				g.Expect(releaseReady.Message).To(Equal(errInternal.Error()))
-
 			},
 			expectedError: errInternal.Error(),
 		},
