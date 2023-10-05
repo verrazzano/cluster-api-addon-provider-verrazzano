@@ -222,6 +222,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 		log.Error(err, fmt.Sprintf("Failed to install or upgrade release for binding '%s' on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 		//log.Error(err, fmt.Sprintf("Failed to install or upgrade release '%s' on cluster %s", verrazzanoFleetBinding.Spec.ReleaseName, verrazzanoFleetBinding.Spec.ClusterRef.Name))
 		conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmInstallOrUpgradeFailedReason, clusterv1.ConditionSeverityError, err.Error())
+		return err
 	}
 	if release != nil {
 		log.V(2).Info((fmt.Sprintf("Release '%s' exists on cluster %s, revision = %d", release.Name, verrazzanoFleetBinding.Spec.ClusterRef.Name, release.Version)))
@@ -238,6 +239,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 		} else if status == helmRelease.StatusFailed && err == nil {
 			log.Info("Helm release failed without error, this might be unexpected", "release", release.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 			conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmInstallOrUpgradeFailedReason, clusterv1.ConditionSeverityError, fmt.Sprintf("Helm release failed: %s", status))
+			return err
 			// TODO: should we set the error state again here?
 		}
 

@@ -281,15 +281,9 @@ func TestReconcileNormal(t *testing.T) {
 				func(g *WithT, c *mocks.MockClientMockRecorder) {
 					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
 				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-				g.Expect(ok).To(BeFalse())
-
-				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
 				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
 				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
 				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
@@ -311,20 +305,13 @@ func TestReconcileNormal(t *testing.T) {
 						},
 					}, nil).Times(1)
 				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				},
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-				_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
-				g.Expect(ok).To(BeFalse())
-
-				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
 				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
 				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmInstallOrUpgradeFailedReason))
 				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
 				g.Expect(releaseReady.Message).To(Equal(fmt.Sprintf("Helm release failed: %s", helmRelease.StatusFailed)))
-
 			},
 			expectedError: "",
 		},
