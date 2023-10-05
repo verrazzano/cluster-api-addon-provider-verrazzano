@@ -173,14 +173,16 @@ func generateVPOData() map[string]string {
 }
 
 func TestReconcileNormal(t *testing.T) {
+	var dynClient *k8sfakedynamic.FakeDynamicClient
+
+	// Initialize scheme for all test cases
+	scheme := runtime.NewScheme()
+	_ = AddToScheme(scheme)
 
 	var getWorkloadClusterK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
 		c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 	}
 
-	scheme := runtime.NewScheme()
-	_ = AddToScheme(scheme)
-	dynClient := k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
 	var getWorkloadClusterDynamicK8sClientMock = func(g *WithT, c *mocks.MockClientMockRecorder) {
 		c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(dynClient, nil).Times(2)
@@ -338,6 +340,7 @@ func TestReconcileNormal(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			clientMock := mocks.NewMockClient(mockCtrl)
+			dynClient = k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
 
 			internal.GetCoreV1Func = func() (corev1Cli.CoreV1Interface, error) {
 				configMap := &corev1.ConfigMap{
