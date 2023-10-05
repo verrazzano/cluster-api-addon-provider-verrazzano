@@ -185,30 +185,24 @@ func TestReconcileNormal(t *testing.T) {
 	testcases := []struct {
 		name                   string
 		verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding
-		clientExpect           []func(g *WithT, c *mocks.MockClientMockRecorder)
+		clientExpect           func(g *WithT, c *mocks.MockClientMockRecorder)
 		expect                 func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding)
 		expectedError          string
 	}{
 		{
 			name:                   "successfully install a Helm release",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusDeployed,
-						},
-					}, nil).Times(1)
-				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(dynClient, nil).Times(2)
-				},
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusDeployed,
+					},
+				}, nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(dynClient, nil).Times(2)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				g.Expect(vfb.Status.Revision).To(Equal(1))
@@ -220,23 +214,17 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "successfully install a Helm release with a generated name",
 			verrazzanoFleetBinding: fleetBinding,
-			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusDeployed,
-						},
-					}, nil).Times(1)
-				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(dynClient, nil).Times(2)
-				},
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusDeployed,
+					},
+				}, nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(dynClient, nil).Times(2)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				//_, ok := vfb.Annotations[addonsv1alpha1.IsReleaseNameGeneratedAnnotation]
@@ -250,19 +238,15 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "Helm release pending",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusPendingInstall,
-						},
-					}, nil).Times(1)
-				},
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(podNotReady), nil).Times(1)
-				},
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusPendingInstall,
+					},
+				}, nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(podNotReady), nil).Times(1)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				t.Logf("VerrazzanoFleetBinding: %+v", vfb)
@@ -278,10 +262,8 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "Helm client returns error",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
-				},
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
@@ -295,16 +277,14 @@ func TestReconcileNormal(t *testing.T) {
 		{
 			name:                   "Helm release in a failed state, no client error",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
-			clientExpect: []func(g *WithT, c *mocks.MockClientMockRecorder){
-				func(g *WithT, c *mocks.MockClientMockRecorder) {
-					c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
-						Name:    "test-release",
-						Version: 1,
-						Info: &helmRelease.Info{
-							Status: helmRelease.StatusFailed,
-						},
-					}, nil).Times(1)
-				},
+			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
+				c.InstallOrUpgradeHelmRelease(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
+					Name:    "test-release",
+					Version: 1,
+					Info: &helmRelease.Info{
+						Status: helmRelease.StatusFailed,
+					},
+				}, nil).Times(1)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
@@ -346,10 +326,7 @@ func TestReconcileNormal(t *testing.T) {
 					WithStatusSubresource(&addonsv1alpha1.VerrazzanoFleetBinding{}).
 					Build(),
 			}
-
-			for _, i := range tc.clientExpect {
-				i(g, clientMock.EXPECT())
-			}
+			tc.clientExpect(g, clientMock.EXPECT())
 
 			err := r.reconcileNormal(ctx, tc.verrazzanoFleetBinding, clientMock, kubeconfig)
 			if tc.expectedError != "" {
