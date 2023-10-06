@@ -399,13 +399,15 @@ func TestReconcileDelete(t *testing.T) {
 			name:                   "error attempting to get Helm release",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
 			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.GetHelmRelease(ctx, kubeconfig, defaultProxy.DeepCopy().Spec).Return(nil, errInternal).Times(1)
+				c.GetHelmRelease(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(dynClient, nil).Times(3)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-				g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
-				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				g.Expect(conditions.Has(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
 				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
-				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmReleaseReadyCondition))
+				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmReleaseGetFailedReason))
 				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityError))
 			},
 			expectedError: errInternal.Error(),
