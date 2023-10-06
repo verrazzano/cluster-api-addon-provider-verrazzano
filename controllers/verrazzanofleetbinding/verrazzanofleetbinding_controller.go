@@ -119,7 +119,7 @@ func (r *FleetBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		Name:      verrazzanoFleetBinding.Spec.ClusterRef.Name,
 	}
 
-	k := internal.NewGetter()
+	k := internal.GetterFunc
 	c := &internal.HelmClient{}
 
 	// examine DeletionTimestamp to determine if object is under deletion
