@@ -175,9 +175,7 @@ func TestReconcileNormal(t *testing.T) {
 	var dynClient *k8sfakedynamic.FakeDynamicClient
 
 	// Initialize scheme for all test cases
-	fakeScheme := runtime.NewScheme()
-	_ = AddToScheme(fakeScheme)
-	_ = addonsv1alpha1.AddToScheme(fakeScheme)
+	fakeScheme := newTestScheme()
 
 	testcases := []struct {
 		name                   string
@@ -341,9 +339,7 @@ func TestReconcileDelete(t *testing.T) {
 	var dynClient *k8sfakedynamic.FakeDynamicClient
 
 	// Initialize scheme for all test cases
-	fakeScheme := runtime.NewScheme()
-	_ = AddToScheme(fakeScheme)
-	_ = addonsv1alpha1.AddToScheme(fakeScheme)
+	fakeScheme := newTestScheme()
 
 	testcases := []struct {
 		name                   string
@@ -452,4 +448,11 @@ func TestReconcileDelete(t *testing.T) {
 			tc.expect(g, tc.verrazzanoFleetBinding)
 		})
 	}
+}
+
+func newTestScheme() *runtime.Scheme {
+	fakeScheme := runtime.NewScheme()
+	_ = AddToScheme(fakeScheme)
+	_ = addonsv1alpha1.AddToScheme(fakeScheme)
+	return fakeScheme
 }
