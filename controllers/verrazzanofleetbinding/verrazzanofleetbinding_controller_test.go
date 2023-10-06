@@ -177,6 +177,7 @@ func TestReconcileNormal(t *testing.T) {
 	// Initialize scheme for all test cases
 	fakeScheme := runtime.NewScheme()
 	_ = AddToScheme(fakeScheme)
+	_ = addonsv1alpha1.AddToScheme(fakeScheme)
 
 	testcases := []struct {
 		name                   string
@@ -342,6 +343,7 @@ func TestReconcileDelete(t *testing.T) {
 	// Initialize scheme for all test cases
 	fakeScheme := runtime.NewScheme()
 	_ = AddToScheme(fakeScheme)
+	_ = addonsv1alpha1.AddToScheme(fakeScheme)
 
 	testcases := []struct {
 		name                   string
