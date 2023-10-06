@@ -25,7 +25,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	models "github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	gomock "go.uber.org/mock/gomock"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	v1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -68,20 +67,6 @@ func (mr *MockGetterMockRecorder) CreateOrUpdateVerrazzano(ctx, fleetBindingName
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateVerrazzano", reflect.TypeOf((*MockGetter)(nil).CreateOrUpdateVerrazzano), ctx, fleetBindingName, kubeconfig, clusterName, vzSpecRawExtension)
 }
 
-// DeleteVerrazzanoFromRemoteCluster mocks base method.
-func (m *MockGetter) DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteVerrazzanoFromRemoteCluster", ctx, vz, fleetBindingName, kubeconfig, clusterName)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteVerrazzanoFromRemoteCluster indicates an expected call of DeleteVerrazzanoFromRemoteCluster.
-func (mr *MockGetterMockRecorder) DeleteVerrazzanoFromRemoteCluster(ctx, vz, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVerrazzanoFromRemoteCluster", reflect.TypeOf((*MockGetter)(nil).DeleteVerrazzanoFromRemoteCluster), ctx, vz, fleetBindingName, kubeconfig, clusterName)
-}
-
 // GetClusterKubeconfig mocks base method.
 func (m *MockGetter) GetClusterKubeconfig(ctx context.Context, cluster *v1beta1.Cluster) (string, error) {
 	m.ctrl.T.Helper()
@@ -95,18 +80,4 @@ func (m *MockGetter) GetClusterKubeconfig(ctx context.Context, cluster *v1beta1.
 func (mr *MockGetterMockRecorder) GetClusterKubeconfig(ctx, cluster interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterKubeconfig", reflect.TypeOf((*MockGetter)(nil).GetClusterKubeconfig), ctx, cluster)
-}
-
-// WaitForVerrazzanoUninstallCompletion mocks base method.
-func (m *MockGetter) WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WaitForVerrazzanoUninstallCompletion", ctx, fleetBindingName, kubeconfig, clusterName)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// WaitForVerrazzanoUninstallCompletion indicates an expected call of WaitForVerrazzanoUninstallCompletion.
-func (mr *MockGetterMockRecorder) WaitForVerrazzanoUninstallCompletion(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForVerrazzanoUninstallCompletion", reflect.TypeOf((*MockGetter)(nil).WaitForVerrazzanoUninstallCompletion), ctx, fleetBindingName, kubeconfig, clusterName)
 }

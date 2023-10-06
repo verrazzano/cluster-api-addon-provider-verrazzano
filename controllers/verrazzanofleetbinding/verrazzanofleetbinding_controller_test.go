@@ -355,24 +355,23 @@ func TestReconcileDelete(t *testing.T) {
 		expectedError          string
 	}{
 		{
-			name:                   "succesfully uninstall a Helm release",
+			name:                   "successfully uninstall a Helm release",
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
 			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
-				c.GetHelmRelease(ctx, kubeconfig, defaultProxy.DeepCopy().Spec).Return(&helmRelease.Release{
+				c.GetHelmRelease(gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.Release{
 					Name:    "test-release",
 					Version: 1,
 					Info: &helmRelease.Info{
 						Status: helmRelease.StatusDeployed,
 					},
 				}, nil).Times(1)
-				c.UninstallHelmRelease(ctx, kubeconfig, defaultProxy.DeepCopy().Spec).Return(&helmRelease.UninstallReleaseResponse{}, nil).Times(1)
-				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				c.UninstallHelmRelease(gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.UninstallReleaseResponse{}, nil).Times(1)
 				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(dynClient, nil).Times(2)
+					Return(dynClient, nil).Times(3)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
-				g.Expect(conditions.Has(vfb, addonsv1alpha1.HelmReleaseReadyCondition)).To(BeTrue())
-				releaseReady := conditions.Get(vfb, addonsv1alpha1.HelmReleaseReadyCondition)
+				g.Expect(conditions.Has(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)).To(BeTrue())
+				releaseReady := conditions.Get(vfb, addonsv1alpha1.VerrazzanoOperatorReadyCondition)
 				g.Expect(releaseReady.Status).To(Equal(corev1.ConditionFalse))
 				g.Expect(releaseReady.Reason).To(Equal(addonsv1alpha1.HelmReleaseDeletedReason))
 				g.Expect(releaseReady.Severity).To(Equal(clusterv1.ConditionSeverityInfo))
@@ -415,13 +414,24 @@ func TestReconcileDelete(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
-			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
 			clientMock := mocks.NewMockClient(mockCtrl)
 			dynClient = k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
 			tc.clientExpect(g, clientMock.EXPECT())
+
+			internal.GetCoreV1Func = func() (corev1Cli.CoreV1Interface, error) {
+				configMap := &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      constants.VerrazzanoPlatformOperatorHelmChartConfigMapName,
+						Namespace: constants.VerrazzanoPlatformOperatorNameSpace,
+					},
+					Data: generateVPOData(),
+				}
+				return k8sfake.NewSimpleClientset(configMap).CoreV1(), nil
+			}
+			defer func() { internal.GetCoreV1Func = k8sutils.GetCoreV1Client }()
 
 			r := &VerrazzanoFleetBindingReconciler{
 				Client: fake.NewClientBuilder().

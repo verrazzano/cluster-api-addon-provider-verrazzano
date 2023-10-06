@@ -61,7 +61,7 @@ func GetVerrazzanoFromRemoteCluster(ctx context.Context, c Client, fleetBindingN
 }
 
 // DeleteVerrazzanoFromRemoteCluster triggers the Verrazzano deletion on the remote cluster.
-func (c *HelmClient) DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
+func DeleteVerrazzanoFromRemoteCluster(ctx context.Context, c Client, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
 	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
@@ -79,7 +79,7 @@ func (c *HelmClient) DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *
 }
 
 // WaitForVerrazzanoUninstallCompletion waits for verrazzano uninstall process to complete within a defined timeout
-func (c *HelmClient) WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error {
+func WaitForVerrazzanoUninstallCompletion(ctx context.Context, c Client, fleetBindingName, kubeconfig, clusterName string) error {
 	log := controllerruntime.LoggerFrom(ctx)
 	done := false
 	var timeSeconds float64
@@ -106,7 +106,7 @@ func (c *HelmClient) WaitForVerrazzanoUninstallCompletion(ctx context.Context, f
 				}
 				timeSeconds = timeSeconds + float64(duration)
 			} else {
-				log.Error(err, "verrazzano deleetion timeout '%s' exceeded.", constants.VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
+				log.Error(err, "verrazzano deletion timeout '%s' exceeded.", constants.VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
 				return err
 			}
 		} else {

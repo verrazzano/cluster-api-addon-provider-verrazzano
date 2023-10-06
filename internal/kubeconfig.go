@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -42,8 +41,6 @@ import (
 type Getter interface {
 	GetClusterKubeconfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error)
 	CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error
-	DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error
-	WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error
 }
 
 type KubeconfigGetter struct{}

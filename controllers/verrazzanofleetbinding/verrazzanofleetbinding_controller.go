@@ -248,7 +248,6 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 			log.Error(err, "Failed to update conditions for VPO")
 			return err
 		}
-
 	}
 
 	if verrazzanoFleetBinding.Spec.Verrazzano != nil {
@@ -264,8 +263,6 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 				log.Error(err, "Failed to update conditions for verrazzano install")
 				return err
 			}
-
-			//conditions.MarkTrue(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoDeployedCondition)
 		}
 	}
 
@@ -275,7 +272,6 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 // reconcileDelete handles VerrazzanoFleetBinding deletion. This will uninstall the VerrazzanoFleetBinding on the Cluster or return nil if the VerrazzanoFleetBinding is not found.
 func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	c := internal.HelmClient{}
 
 	log.V(2).Info("Deleting VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
@@ -286,13 +282,13 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 	}
 
 	if vz != nil {
-		err = c.DeleteVerrazzanoFromRemoteCluster(ctx, vz, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+		err = internal.DeleteVerrazzanoFromRemoteCluster(ctx, client, vz, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 		if err != nil {
 			log.Error(err, "failed to delete verrazzano")
 			return err
 		}
 
-		err = c.WaitForVerrazzanoUninstallCompletion(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+		err = internal.WaitForVerrazzanoUninstallCompletion(ctx, client, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 		if err != nil {
 			log.Error(err, "failed to uninstall verrazzano completely")
 			return err
