@@ -200,7 +200,7 @@ func TestReconcileNormal(t *testing.T) {
 						Status: helmRelease.StatusDeployed,
 					},
 				}, nil).Times(1)
-				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(2)
 			},
@@ -222,7 +222,7 @@ func TestReconcileNormal(t *testing.T) {
 						Status: helmRelease.StatusDeployed,
 					},
 				}, nil).Times(1)
-				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
 				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(2)
 			},
@@ -246,7 +246,7 @@ func TestReconcileNormal(t *testing.T) {
 						Status: helmRelease.StatusPendingInstall,
 					},
 				}, nil).Times(1)
-				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(podNotReady), nil).Times(1)
+				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(podNotReady), nil).Times(1)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
 				t.Logf("VerrazzanoFleetBinding: %+v", vfb)

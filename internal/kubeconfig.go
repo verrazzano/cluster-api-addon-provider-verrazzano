@@ -170,7 +170,7 @@ func writeInClusterKubeconfigToFile(ctx context.Context, filePath string, client
 }
 
 // GetWorkloadClusterK8sClient returns the K8s client of an OCNE cluster if it exists.
-func (c *HelmClient) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (kubernetes.Interface, error) {
+func (c *HelmClient) GetWorkloadClusterK8sClient(ctx context.Context, kubeconfig string) (kubernetes.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)

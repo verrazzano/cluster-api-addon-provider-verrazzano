@@ -374,7 +374,7 @@ func patchVerrazzanoFleetBinding(ctx context.Context, patchHelper *patch.Helper,
 
 func setVerrazzanoPlatformOperatorConditions(ctx context.Context, c internal.Client, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k8sclient, err := c.GetWorkloadClusterK8sClient(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	k8sclient, err := c.GetWorkloadClusterK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "Unable to get k8s client")
 		return err
