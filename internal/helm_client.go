@@ -58,7 +58,7 @@ type Client interface {
 	GetHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.Release, error)
 	UninstallHelmRelease(ctx context.Context, kubeconfig string, spec *models.HelmModuleAddons) (*helmRelease.UninstallReleaseResponse, error)
 	GetWorkloadClusterK8sClient(ctx context.Context, kubeconfig string) (kubernetes.Interface, error)
-	GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error)
+	GetWorkloadClusterDynamicK8sClient(ctx context.Context, kubeconfig string) (dynamic.Interface, error)
 }
 
 type HelmClient struct{}
@@ -129,7 +129,7 @@ func (c *HelmClient) InstallOrUpgradeHelmRelease(ctx context.Context, kubeconfig
 	// if _, err := historyClient.Run(spec.ReleaseName); err == helmDriver.ErrReleaseNotFound {
 	existingRelease, err := c.GetHelmRelease(ctx, kubeconfig, spec)
 	if err != nil {
-		if err == helmDriver.ErrReleaseNotFound {
+		if errors.Is(err, helmDriver.ErrReleaseNotFound) {
 			return c.InstallHelmRelease(ctx, kubeconfig, values, spec)
 		}
 
@@ -406,7 +406,6 @@ func writeValuesToFile(ctx context.Context, values string, spec *models.HelmModu
 // shouldUpgradeHelmRelease determines if a Helm release should be upgraded.
 func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release, chartRequested *chart.Chart, values map[string]interface{}, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) (bool, error) {
 	log := ctrl.LoggerFrom(ctx)
-	existing.Info.Status.String()
 	var vzSemVersionWorkloadCluster *semver.SemVersion
 
 	verrazzanoSpec := verrazzanoFleetBinding.Spec.Verrazzano.Spec

@@ -72,18 +72,18 @@ func (mr *MockClientMockRecorder) GetHelmRelease(ctx, kubeconfig, spec interface
 }
 
 // GetWorkloadClusterDynamicK8sClient mocks base method.
-func (m *MockClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
+func (m *MockClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, kubeconfig string) (dynamic.Interface, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWorkloadClusterDynamicK8sClient", ctx, fleetBindingName, kubeconfig, clusterName)
+	ret := m.ctrl.Call(m, "GetWorkloadClusterDynamicK8sClient", ctx, kubeconfig)
 	ret0, _ := ret[0].(dynamic.Interface)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetWorkloadClusterDynamicK8sClient indicates an expected call of GetWorkloadClusterDynamicK8sClient.
-func (mr *MockClientMockRecorder) GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterDynamicK8sClient", reflect.TypeOf((*MockClient)(nil).GetWorkloadClusterDynamicK8sClient), ctx, fleetBindingName, kubeconfig, clusterName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterDynamicK8sClient", reflect.TypeOf((*MockClient)(nil).GetWorkloadClusterDynamicK8sClient), ctx, kubeconfig)
 }
 
 // GetWorkloadClusterK8sClient mocks base method.

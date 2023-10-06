@@ -182,7 +182,7 @@ func (c *HelmClient) GetWorkloadClusterK8sClient(ctx context.Context, kubeconfig
 }
 
 // GetWorkloadClusterDynamicK8sClient returns the Dynamic K8s client of an OCNE cluster if it exists.
-func (c *HelmClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
+func (c *HelmClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, kubeconfig string) (dynamic.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
 	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)
 	if err != nil {

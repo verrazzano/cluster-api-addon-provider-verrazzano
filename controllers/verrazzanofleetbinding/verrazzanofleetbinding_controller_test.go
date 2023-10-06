@@ -45,10 +45,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
-type v8ospec struct {
-	Version string `json:"version"`
-}
-
 var (
 	kubeconfig = "test-kubeconfig"
 
@@ -179,8 +175,8 @@ func TestReconcileNormal(t *testing.T) {
 	var dynClient *k8sfakedynamic.FakeDynamicClient
 
 	// Initialize scheme for all test cases
-	scheme := runtime.NewScheme()
-	_ = AddToScheme(scheme)
+	fakeScheme := runtime.NewScheme()
+	_ = AddToScheme(fakeScheme)
 
 	testcases := []struct {
 		name                   string
@@ -201,7 +197,7 @@ func TestReconcileNormal(t *testing.T) {
 					},
 				}, nil).Times(1)
 				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(2)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
@@ -223,7 +219,7 @@ func TestReconcileNormal(t *testing.T) {
 					},
 				}, nil).Times(1)
 				c.GetWorkloadClusterK8sClient(gomock.Any(), gomock.Any()).Return(k8sfake.NewSimpleClientset(), nil).Times(1)
-				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(2)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
@@ -306,7 +302,7 @@ func TestReconcileNormal(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			clientMock := mocks.NewMockClient(mockCtrl)
-			dynClient = k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
+			dynClient = k8sfakedynamic.NewSimpleDynamicClient(fakeScheme, newTestVZ())
 
 			internal.GetCoreV1Func = func() (corev1Cli.CoreV1Interface, error) {
 				configMap := &corev1.ConfigMap{
@@ -344,8 +340,8 @@ func TestReconcileDelete(t *testing.T) {
 	var dynClient *k8sfakedynamic.FakeDynamicClient
 
 	// Initialize scheme for all test cases
-	scheme := runtime.NewScheme()
-	_ = AddToScheme(scheme)
+	fakeScheme := runtime.NewScheme()
+	_ = AddToScheme(fakeScheme)
 
 	testcases := []struct {
 		name                   string
@@ -366,7 +362,7 @@ func TestReconcileDelete(t *testing.T) {
 					},
 				}, nil).Times(1)
 				c.UninstallHelmRelease(gomock.Any(), gomock.Any(), gomock.Any()).Return(&helmRelease.UninstallReleaseResponse{}, nil).Times(1)
-				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(3)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
@@ -383,7 +379,7 @@ func TestReconcileDelete(t *testing.T) {
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
 			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
 				c.GetHelmRelease(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, helmDriver.ErrReleaseNotFound).Times(1)
-				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(3)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
@@ -400,7 +396,7 @@ func TestReconcileDelete(t *testing.T) {
 			verrazzanoFleetBinding: defaultProxy.DeepCopy(),
 			clientExpect: func(g *WithT, c *mocks.MockClientMockRecorder) {
 				c.GetHelmRelease(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errInternal).Times(1)
-				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				c.GetWorkloadClusterDynamicK8sClient(gomock.Any(), gomock.Any()).
 					Return(dynClient, nil).Times(3)
 			},
 			expect: func(g *WithT, vfb *addonsv1alpha1.VerrazzanoFleetBinding) {
@@ -422,7 +418,7 @@ func TestReconcileDelete(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			clientMock := mocks.NewMockClient(mockCtrl)
-			dynClient = k8sfakedynamic.NewSimpleDynamicClient(scheme, newTestVZ())
+			dynClient = k8sfakedynamic.NewSimpleDynamicClient(fakeScheme, newTestVZ())
 			tc.clientExpect(g, clientMock.EXPECT())
 
 			internal.GetCoreV1Func = func() (corev1Cli.CoreV1Interface, error) {

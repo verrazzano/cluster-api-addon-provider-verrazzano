@@ -22,7 +22,7 @@ import (
 // GetVerrazzanoFromRemoteCluster fetches the Verrazzano object from a remote cluster.
 func GetVerrazzanoFromRemoteCluster(ctx context.Context, c Client, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
 	log := controllerruntime.LoggerFrom(ctx)
-	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
+	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "unable to get workload kubeconfig ")
 		return nil, err
@@ -64,7 +64,7 @@ func GetVerrazzanoFromRemoteCluster(ctx context.Context, c Client, fleetBindingN
 func DeleteVerrazzanoFromRemoteCluster(ctx context.Context, c Client, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
+	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "unable to get workload kubeconfig ")
 		return err
@@ -131,7 +131,7 @@ func (k *KubeconfigGetter) CreateOrUpdateVerrazzano(ctx context.Context, client 
 func PatchVerrazzano(ctx context.Context, client Client, fleetBindingName, kubeconfig, clusterName string, obj *unstructured.Unstructured) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	dclient, err := client.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
+	dclient, err := client.GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "unable to get dynamic client ")
 		return err
