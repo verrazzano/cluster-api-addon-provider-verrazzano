@@ -435,7 +435,7 @@ func shouldUpgradeHelmRelease(ctx context.Context, existing helmRelease.Release,
 		return false, errors.New("Failed to resolve chart version of existing release")
 	}
 
-	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminCluster()
+	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminClusterFunc()
 	if err != nil {
 		return false, errors.Wrapf(err, "Failed to get Verrazzano version from admin cluster")
 	}
