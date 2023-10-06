@@ -23,34 +23,32 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
-
 	"github.com/pkg/errors"
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	helmRelease "helm.sh/helm/v3/pkg/release"
 	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
+	"sigs.k8s.io/cluster-api/util/patch"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
-	"sigs.k8s.io/cluster-api/util/predicates"
 )
 
 const (
 	VerrazzanoInstallNamespace = "verrazzano-install"
 )
 
-// VerrazzanoFleetBindingReconciler reconciles a VerrazzanoFleetBinding object
-type VerrazzanoFleetBindingReconciler struct {
+// FleetBindingReconciler reconciles a VerrazzanoFleetBinding object
+type FleetBindingReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -59,7 +57,7 @@ type VerrazzanoFleetBindingReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *VerrazzanoFleetBindingReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+func (r *FleetBindingReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -82,7 +80,7 @@ func (r *VerrazzanoFleetBindingReconciler) SetupWithManager(ctx context.Context,
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+func (r *FleetBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	log.V(2).Info("Beginning reconcilation for VerrazzanoFleetBinding", "requestNamespace", req.Namespace, "requestName", req.Name)
@@ -103,7 +101,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, errors.Wrapf(err, "failed to init patch helper")
 	}
 
-	initalizeConditions(ctx, patchHelper, verrazzanoFleetBinding)
+	initializeConditions(ctx, patchHelper, verrazzanoFleetBinding)
 
 	defer func() {
 		log.V(2).Info("Preparing to patch VerrazzanoFleetBinding with return error", "verrazzanoFleetBinding", verrazzanoFleetBinding.Name, "reterr", reterr)
@@ -122,7 +120,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	k := internal.NewGetter()
-	client := &internal.HelmClient{}
+	c := &internal.HelmClient{}
 
 	// examine DeletionTimestamp to determine if object is under deletion
 	if verrazzanoFleetBinding.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -151,7 +149,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 				}
 				conditions.MarkTrue(verrazzanoFleetBinding, addonsv1alpha1.ClusterAvailableCondition)
 
-				if err := r.reconcileDelete(ctx, verrazzanoFleetBinding, client, kubeconfig); err != nil {
+				if err := r.reconcileDelete(ctx, verrazzanoFleetBinding, c, kubeconfig); err != nil {
 					// if fail to delete the external dependency here, return with error
 					// so that it can be retried
 					return ctrl.Result{}, err
@@ -198,14 +196,14 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 	conditions.MarkTrue(verrazzanoFleetBinding, addonsv1alpha1.ClusterAvailableCondition)
 
 	log.V(2).Info("Reconciling VerrazzanoFleetBinding", "releaseProxyName", verrazzanoFleetBinding.Name)
-	err = r.reconcileNormal(ctx, verrazzanoFleetBinding, client, kubeconfig)
+	err = r.reconcileNormal(ctx, verrazzanoFleetBinding, c, kubeconfig)
 
 	return ctrl.Result{Requeue: true}, err
 }
 
 // reconcileNormal handles VerrazzanoFleetBinding reconciliation when it is not being deleted. This will install or upgrade the VerrazzanoFleetBinding on the Cluster.
 // It will set the ReleaseName on the VerrazzanoFleetBinding if the name is generated and also set the release status and release revision.
-func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
+func (r *FleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
 	k := internal.GetterFunc
 
@@ -225,7 +223,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 		return err
 	}
 	if release != nil {
-		log.V(2).Info((fmt.Sprintf("Release '%s' exists on cluster %s, revision = %d", release.Name, verrazzanoFleetBinding.Spec.ClusterRef.Name, release.Version)))
+		log.V(2).Info(fmt.Sprintf("Release '%s' exists on cluster %s, revision = %d", release.Name, verrazzanoFleetBinding.Spec.ClusterRef.Name, release.Version))
 
 		status := release.Info.Status
 		//verrazzanoFleetBinding.SetReleaseStatus(status.String())
@@ -270,7 +268,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 }
 
 // reconcileDelete handles VerrazzanoFleetBinding deletion. This will uninstall the VerrazzanoFleetBinding on the Cluster or return nil if the VerrazzanoFleetBinding is not found.
-func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
+func (r *FleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	log.V(2).Info("Deleting VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
@@ -307,7 +305,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 	if err != nil {
 		log.V(2).Error(err, "error getting release from cluster", "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
-		if err == helmDriver.ErrReleaseNotFound {
+		if errors.Is(err, helmDriver.ErrReleaseNotFound) {
 			log.V(2).Info(fmt.Sprintf("Release binding '%s' not found on cluster %s, nothing to do for uninstall", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 			conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmReleaseDeletedReason, clusterv1.ConditionSeverityInfo, "")
 
@@ -328,7 +326,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 		return errors.Wrapf(err, "error uninstalling chart with Helm on cluster %s", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	}
 
-	log.V(2).Info((fmt.Sprintf("Binding Chart '%s' successfully uninstalled on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name)))
+	log.V(2).Info(fmt.Sprintf("Binding Chart '%s' successfully uninstalled on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 	conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmReleaseDeletedReason, clusterv1.ConditionSeverityInfo, "")
 	if response != nil && response.Info != "" {
 		log.V(2).Info(fmt.Sprintf("Response is %s", response.Info))
@@ -337,7 +335,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 	return nil
 }
 
-func initalizeConditions(ctx context.Context, patchHelper *patch.Helper, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) {
+func initializeConditions(ctx context.Context, patchHelper *patch.Helper, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) {
 	log := ctrl.LoggerFrom(ctx)
 	if len(verrazzanoFleetBinding.GetConditions()) == 0 {
 		conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.PreparingToHelmInstallReason, clusterv1.ConditionSeverityInfo, "Preparing to to install Helm chart")
