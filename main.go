@@ -129,7 +129,7 @@ func main() {
 	}
 	//+kubebuilder:scaffold:builder
 
-	if err = (&vfbController.FleetBindingReconciler{
+	if err = (&vfbController.VerrazzanoFleetBindingReconciler{
 		Client: mgr.GetClient(),
 		Scheme: scheme,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: verrazzanoFleetBindingConcurrency}); err != nil {

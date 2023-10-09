@@ -315,7 +315,7 @@ func TestReconcileNormal(t *testing.T) {
 			}
 			defer func() { internal.GetCoreV1Func = k8sutils.GetCoreV1Client }()
 
-			r := &FleetBindingReconciler{
+			r := &VerrazzanoFleetBindingReconciler{
 				Client: fake.NewClientBuilder().
 					WithScheme(fakeScheme).
 					WithStatusSubresource(&addonsv1alpha1.VerrazzanoFleetBinding{}).
@@ -431,7 +431,7 @@ func TestReconcileDelete(t *testing.T) {
 			}
 			defer func() { internal.GetCoreV1Func = k8sutils.GetCoreV1Client }()
 
-			r := &FleetBindingReconciler{
+			r := &VerrazzanoFleetBindingReconciler{
 				Client: fake.NewClientBuilder().
 					WithScheme(fakeScheme).
 					WithStatusSubresource(&addonsv1alpha1.VerrazzanoFleetBinding{}).

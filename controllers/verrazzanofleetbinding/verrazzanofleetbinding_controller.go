@@ -47,8 +47,8 @@ const (
 	VerrazzanoInstallNamespace = "verrazzano-install"
 )
 
-// FleetBindingReconciler reconciles a VerrazzanoFleetBinding object
-type FleetBindingReconciler struct {
+// VerrazzanoFleetBindingReconciler reconciles a VerrazzanoFleetBinding object
+type VerrazzanoFleetBindingReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -57,7 +57,7 @@ type FleetBindingReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *FleetBindingReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+func (r *VerrazzanoFleetBindingReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -80,7 +80,7 @@ func (r *FleetBindingReconciler) SetupWithManager(ctx context.Context, mgr ctrl.
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *FleetBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	log.V(2).Info("Beginning reconcilation for VerrazzanoFleetBinding", "requestNamespace", req.Namespace, "requestName", req.Name)
@@ -203,7 +203,7 @@ func (r *FleetBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 // reconcileNormal handles VerrazzanoFleetBinding reconciliation when it is not being deleted. This will install or upgrade the VerrazzanoFleetBinding on the Cluster.
 // It will set the ReleaseName on the VerrazzanoFleetBinding if the name is generated and also set the release status and release revision.
-func (r *FleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
+func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
 	k := internal.GetterFunc
 
@@ -268,7 +268,7 @@ func (r *FleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzano
 }
 
 // reconcileDelete handles VerrazzanoFleetBinding deletion. This will uninstall the VerrazzanoFleetBinding on the Cluster or return nil if the VerrazzanoFleetBinding is not found.
-func (r *FleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
+func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	log.V(2).Info("Deleting VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
