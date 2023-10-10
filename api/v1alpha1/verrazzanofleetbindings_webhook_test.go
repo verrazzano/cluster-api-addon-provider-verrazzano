@@ -3,11 +3,13 @@
 package v1alpha1
 
 import (
+	"testing"
+
 	. "github.com/onsi/gomega"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"testing"
 )
 
 func TestVerrazzanoFleetBindingValidateCreate(t *testing.T) {
@@ -106,6 +108,11 @@ func TestVerrazzanoFleetBindingValidateCreate(t *testing.T) {
 			vzfleet:   inValidFleet,
 		},
 	}
+
+	k8sutils.GetVerrazzanoVersionOfAdminClusterFunc = func() (string, error) {
+		return "v1.7.0", nil
+	}
+	defer k8sutils.ResetGetVerrazzanoVersionOfAdminClusterFunc()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -250,6 +257,11 @@ func TestVerrazzanoFleetBindingValidateUpdate(t *testing.T) {
 			afterupgrade: inValidFleet,
 		},
 	}
+
+	k8sutils.GetVerrazzanoVersionOfAdminClusterFunc = func() (string, error) {
+		return "v1.7.0", nil
+	}
+	defer k8sutils.ResetGetVerrazzanoVersionOfAdminClusterFunc()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

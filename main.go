@@ -38,9 +38,9 @@ import (
 	vfbController "github.com/verrazzano/cluster-api-addon-provider-verrazzano/controllers/verrazzanofleetbinding"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/version"
 
+	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	kcpv1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
-	"k8s.io/klog/v2"
 	//+kubebuilder:scaffold:imports
 )
 

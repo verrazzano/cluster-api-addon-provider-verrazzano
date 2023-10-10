@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
@@ -15,14 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/yaml"
-	"time"
 )
 
 // GetVerrazzanoFromRemoteCluster fetches the Verrazzano object from a remote cluster.
-func (k *KubeconfigGetter) GetVerrazzanoFromRemoteCluster(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
+func GetVerrazzanoFromRemoteCluster(ctx context.Context, c Client, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error) {
 	log := controllerruntime.LoggerFrom(ctx)
-	dclient, err := k.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
+	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "unable to get workload kubeconfig ")
 		return nil, err
@@ -61,10 +61,10 @@ func (k *KubeconfigGetter) GetVerrazzanoFromRemoteCluster(ctx context.Context, f
 }
 
 // DeleteVerrazzanoFromRemoteCluster triggers the Verrazzano deletion on the remote cluster.
-func (k *KubeconfigGetter) DeleteVerrazzanoFromRemoteCluster(ctx context.Context, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
+func DeleteVerrazzanoFromRemoteCluster(ctx context.Context, c Client, vz *models.Verrazzano, fleetBindingName, kubeconfig, clusterName string) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	dclient, err := k.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
+	dclient, err := c.GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "unable to get workload kubeconfig ")
 		return err
@@ -79,7 +79,7 @@ func (k *KubeconfigGetter) DeleteVerrazzanoFromRemoteCluster(ctx context.Context
 }
 
 // WaitForVerrazzanoUninstallCompletion waits for verrazzano uninstall process to complete within a defined timeout
-func (k *KubeconfigGetter) WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error {
+func WaitForVerrazzanoUninstallCompletion(ctx context.Context, c Client, fleetBindingName, kubeconfig, clusterName string) error {
 	log := controllerruntime.LoggerFrom(ctx)
 	done := false
 	var timeSeconds float64
@@ -92,7 +92,7 @@ func (k *KubeconfigGetter) WaitForVerrazzanoUninstallCompletion(ctx context.Cont
 	totalSeconds := timeParse.Seconds()
 
 	for !done {
-		vz, err := k.GetVerrazzanoFromRemoteCluster(ctx, fleetBindingName, kubeconfig, clusterName)
+		vz, err := GetVerrazzanoFromRemoteCluster(ctx, c, fleetBindingName, kubeconfig, clusterName)
 		if err != nil {
 			log.Error(err, "unable to fetch verrazzano install from workload cluster")
 			return err
@@ -106,7 +106,7 @@ func (k *KubeconfigGetter) WaitForVerrazzanoUninstallCompletion(ctx context.Cont
 				}
 				timeSeconds = timeSeconds + float64(duration)
 			} else {
-				log.Error(err, "verrazzano deleetion timeout '%s' exceeded.", constants.VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
+				log.Error(err, "verrazzano deletion timeout '%s' exceeded.", constants.VERRAZZANO_UNINSTALL_TIMEOUT_MINUTES)
 				return err
 			}
 		} else {
@@ -117,22 +117,21 @@ func (k *KubeconfigGetter) WaitForVerrazzanoUninstallCompletion(ctx context.Cont
 }
 
 // CreateOrUpdateVerrazzano starts verrazzano deployment
-func (k *KubeconfigGetter) CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error {
+func (k *KubeconfigGetter) CreateOrUpdateVerrazzano(ctx context.Context, client Client, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error {
 	log := controllerruntime.LoggerFrom(ctx)
 	vzSpecObject, err := utils.ConvertRawExtensionToUnstructured(vzSpecRawExtension)
 	if err != nil {
 		log.Error(err, "Failed to convert raw extension to unstructured data")
 		return err
 	}
-	return PatchVerrazzano(ctx, fleetBindingName, kubeconfig, clusterName, vzSpecObject)
+	return PatchVerrazzano(ctx, client, fleetBindingName, kubeconfig, clusterName, vzSpecObject)
 }
 
 // PatchVerrazzano helps apply the verrazzano config on the remote cluster
-func PatchVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, obj *unstructured.Unstructured) error {
+func PatchVerrazzano(ctx context.Context, client Client, fleetBindingName, kubeconfig, clusterName string, obj *unstructured.Unstructured) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	k := KubeconfigGetter{}
-	dclient, err := k.GetWorkloadClusterDynamicK8sClient(ctx, fleetBindingName, kubeconfig, clusterName)
+	dclient, err := client.GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "unable to get dynamic client ")
 		return err
@@ -150,17 +149,16 @@ func PatchVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterN
 		Resource: constants.VerrazzanoResource,
 	}
 
-	data, err := yaml.Marshal(newObj.Object)
+	data, err := json.Marshal(newObj.Object)
 	if err != nil {
-		log.Error(err, "failed in yaml marshall")
+		log.Error(err, "failed in json marshall")
 		return err
 	}
 	log.V(5).Info("verrazzano spec applied", string(data))
 
 	//Apply the Yaml
-	_, err = dclient.Resource(gvr).Namespace(newObj.GetNamespace()).Patch(ctx, newObj.GetName(), types.ApplyPatchType, data, v1.PatchOptions{
-		FieldManager: "verrazzano-platform-controller",
-	})
+	_, err = dclient.Resource(gvr).Namespace(constants.VerrazzanoInstallNamespace).Patch(ctx, constants.VerrazzanoInstallName, types.StrategicMergePatchType, data, v1.PatchOptions{
+		FieldManager: "verrazzano-platform-controller"})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to apply verrazzano spec"))
 		return err
@@ -168,16 +166,8 @@ func PatchVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterN
 	return nil
 }
 
+// processVerrazzanoSpec - wrap the updates in a spec field
 func processVerrazzanoSpec(ctx context.Context, inputObj *unstructured.Unstructured) (unstructured.Unstructured, error) {
-	/*
-		apiVersion: install.verrazzano.io/v1beta1
-		kind: Verrazzano
-		metadata:
-		  name: verrazzano
-		  namespace: default
-	*/
-	// overwrite above contents even if specified in input spec
-
 	log := controllerruntime.LoggerFrom(ctx)
 	var newObj unstructured.Unstructured
 	if newObj.Object == nil {
@@ -187,11 +177,5 @@ func processVerrazzanoSpec(ctx context.Context, inputObj *unstructured.Unstructu
 		log.Error(err, "unable to set nested field")
 		return newObj, err
 	}
-	newObj.SetAPIVersion(fmt.Sprintf("%s/%s", constants.APIGroup, constants.APIVersionBeta1))
-	newObj.SetKind(constants.VerrazzanoDomainKind)
-	newObj.SetName(constants.VerrazzanoInstallName)
-	newObj.SetNamespace(constants.VerrazzanoInstallNamespace)
-
 	return newObj, nil
-
 }

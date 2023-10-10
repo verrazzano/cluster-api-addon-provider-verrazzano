@@ -21,6 +21,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/Masterminds/semver/v3"
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils"
@@ -264,7 +265,7 @@ func allowed(allowList [][]string, path []string) bool {
 
 // paths builds a slice of paths that are being modified.
 func paths(path []string, diff map[string]interface{}) [][]string {
-	allPaths := [][]string{}
+	var allPaths [][]string
 	for key, m := range diff {
 		nested, ok := m.(map[string]interface{})
 		if !ok {
@@ -283,9 +284,12 @@ func paths(path []string, diff map[string]interface{}) [][]string {
 func isValidVerrazzanoUpgradeVersion(fleetSpec VerrazzanoFleetSpec) (bool, error) {
 
 	verrazzanoSpec := fleetSpec.Verrazzano.Spec
+	if verrazzanoSpec == nil {
+		return false, fmt.Errorf("spec field is empty")
+	}
 	vzSpecObject, _ := utils.ConvertRawExtensionToUnstructured(verrazzanoSpec)
 	fleetVZVersion, versionExists, _ := unstructured.NestedString(vzSpecObject.Object, "version")
-	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminCluster()
+	vzVersionOnAdminCluster, err := k8sutils.GetVerrazzanoVersionOfAdminClusterFunc()
 	if err != nil {
 		return false, apierrors.NewInternalError(err)
 	}

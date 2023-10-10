@@ -19,8 +19,9 @@ limitations under the License.
 package verrazzanofleet
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +63,7 @@ var (
 				Enabled: true,
 			},
 			ImagePullSecrets: []addonsv1alpha1.SecretName{
-				addonsv1alpha1.SecretName{
+				{
 					Name: "test-secret",
 				},
 			},
@@ -289,7 +290,7 @@ func TestReconcileNormal(t *testing.T) {
 				g.Expect(err).To(MatchError(tc.expectedError), err.Error())
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(result).To(Equal(reconcile.Result{}))
+				g.Expect(result).To(Equal(reconcile.Result{Requeue: true}))
 
 				vf := &addonsv1alpha1.VerrazzanoFleet{}
 				g.Expect(r.Client.Get(ctx, request.NamespacedName, vf)).To(Succeed())
