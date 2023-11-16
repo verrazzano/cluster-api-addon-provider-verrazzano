@@ -20,16 +20,17 @@ package internal
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+
 	"github.com/pkg/errors"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"os"
-	"path/filepath"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/client"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/client/cluster"
@@ -39,15 +40,16 @@ import (
 
 type Getter interface {
 	GetClusterKubeconfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error)
-	GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error)
-	GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error)
-	CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName, vzspec string) error
-	GetVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*models.Verrazzano, error)
-	DeleteVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error
-	WaitForVerrazzanoUninstallCompletion(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) error
+	CreateOrUpdateVerrazzano(ctx context.Context, fleetBindingName, kubeconfig, clusterName string, vzSpecRawExtension *runtime.RawExtension) error
 }
 
 type KubeconfigGetter struct{}
+
+var GetterFunc = NewGetter()
+
+func NewGetter() *KubeconfigGetter {
+	return &KubeconfigGetter{}
+}
 
 // GetClusterKubeconfig returns the kubeconfig for a selected Cluster as a string.
 func (k *KubeconfigGetter) GetClusterKubeconfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
@@ -168,7 +170,7 @@ func writeInClusterKubeconfigToFile(ctx context.Context, filePath string, client
 }
 
 // GetWorkloadClusterK8sClient returns the K8s client of an OCNE cluster if it exists.
-func (k *KubeconfigGetter) GetWorkloadClusterK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (*kubernetes.Clientset, error) {
+func (c *HelmClient) GetWorkloadClusterK8sClient(ctx context.Context, kubeconfig string) (kubernetes.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)
@@ -180,7 +182,7 @@ func (k *KubeconfigGetter) GetWorkloadClusterK8sClient(ctx context.Context, flee
 }
 
 // GetWorkloadClusterDynamicK8sClient returns the Dynamic K8s client of an OCNE cluster if it exists.
-func (k *KubeconfigGetter) GetWorkloadClusterDynamicK8sClient(ctx context.Context, fleetBindingName, kubeconfig, clusterName string) (dynamic.Interface, error) {
+func (c *HelmClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, kubeconfig string) (dynamic.Interface, error) {
 	log := ctrl.LoggerFrom(ctx)
 	k8sRestConfig, err := k8sutils.BuildWorkloadClusterRESTKubeConfig(kubeconfig)
 	if err != nil {

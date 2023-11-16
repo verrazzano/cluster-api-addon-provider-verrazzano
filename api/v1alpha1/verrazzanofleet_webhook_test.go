@@ -3,10 +3,12 @@
 package v1alpha1
 
 import (
+	"testing"
+
 	. "github.com/onsi/gomega"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"testing"
 )
 
 //func TestVerrazzanoFleetValidateCreate(t *testing.T) {
@@ -130,7 +132,7 @@ func TestVerrazzanoFleetValidateUpdate(t *testing.T) {
 			},
 			Verrazzano: &Verrazzano{
 				Spec: &runtime.RawExtension{
-					Object: nil,
+					Raw: []byte(`{"version": "v2.0.0", "profile": "none", "components": {"certManager": {"enabled": true}}}`),
 				},
 			},
 			Image: &ImageMeta{
@@ -139,7 +141,7 @@ func TestVerrazzanoFleetValidateUpdate(t *testing.T) {
 				PullPolicy: "Always",
 			},
 			ImagePullSecrets: []SecretName{
-				SecretName{
+				{
 					Name: "test-secret",
 				},
 			},
@@ -160,7 +162,7 @@ func TestVerrazzanoFleetValidateUpdate(t *testing.T) {
 	changeVerrazzanoSpec := before.DeepCopy()
 	changeVerrazzanoSpec.Spec.Verrazzano = &Verrazzano{
 		Spec: &runtime.RawExtension{
-			Object: nil,
+			Raw: []byte(`{"version": "v2.0.0", "profile": "none", "components": {"certManager": {"enabled": true}}}`),
 		},
 	}
 
@@ -249,6 +251,11 @@ func TestVerrazzanoFleetValidateUpdate(t *testing.T) {
 			afterupgrade: clusterNameChangeFleet,
 		},
 	}
+
+	k8sutils.GetVerrazzanoVersionOfAdminClusterFunc = func() (string, error) {
+		return "v2.0.0", nil
+	}
+	defer k8sutils.ResetGetVerrazzanoVersionOfAdminClusterFunc()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

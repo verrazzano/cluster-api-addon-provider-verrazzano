@@ -7,20 +7,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
-	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"os"
 	"path/filepath"
 
 	gerrors "github.com/pkg/errors"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/constants"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sYaml "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -28,6 +28,13 @@ import (
 )
 
 var decUnstructured = k8sYaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+
+// Used for unit testing
+var GetVerrazzanoVersionOfAdminClusterFunc = getVerrazzanoVersionOfAdminCluster
+
+func ResetGetVerrazzanoVersionOfAdminClusterFunc() {
+	GetVerrazzanoVersionOfAdminClusterFunc = getVerrazzanoVersionOfAdminCluster
+}
 
 func setConfigQPSBurst(config *rest.Config) {
 	config.Burst = constants.APIServerBurst
@@ -111,7 +118,7 @@ func GetCoreV1Client() (v12.CoreV1Interface, error) {
 	return kubeClient.CoreV1(), nil
 }
 
-func GetVerrazzanoVersionOfAdminCluster() (string, error) {
+func getVerrazzanoVersionOfAdminCluster() (string, error) {
 	k8sRestConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return "", gerrors.Wrap(err, "failed to get k8s rest config")

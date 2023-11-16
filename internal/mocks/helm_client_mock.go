@@ -29,6 +29,8 @@ import (
 	models "github.com/verrazzano/cluster-api-addon-provider-verrazzano/models"
 	gomock "go.uber.org/mock/gomock"
 	release "helm.sh/helm/v3/pkg/release"
+	dynamic "k8s.io/client-go/dynamic"
+	kubernetes "k8s.io/client-go/kubernetes"
 )
 
 // MockClient is a mock of Client interface.
@@ -67,6 +69,36 @@ func (m *MockClient) GetHelmRelease(ctx context.Context, kubeconfig string, spec
 func (mr *MockClientMockRecorder) GetHelmRelease(ctx, kubeconfig, spec interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHelmRelease", reflect.TypeOf((*MockClient)(nil).GetHelmRelease), ctx, kubeconfig, spec)
+}
+
+// GetWorkloadClusterDynamicK8sClient mocks base method.
+func (m *MockClient) GetWorkloadClusterDynamicK8sClient(ctx context.Context, kubeconfig string) (dynamic.Interface, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWorkloadClusterDynamicK8sClient", ctx, kubeconfig)
+	ret0, _ := ret[0].(dynamic.Interface)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorkloadClusterDynamicK8sClient indicates an expected call of GetWorkloadClusterDynamicK8sClient.
+func (mr *MockClientMockRecorder) GetWorkloadClusterDynamicK8sClient(ctx, kubeconfig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterDynamicK8sClient", reflect.TypeOf((*MockClient)(nil).GetWorkloadClusterDynamicK8sClient), ctx, kubeconfig)
+}
+
+// GetWorkloadClusterK8sClient mocks base method.
+func (m *MockClient) GetWorkloadClusterK8sClient(ctx context.Context, kubeconfig string) (kubernetes.Interface, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWorkloadClusterK8sClient", ctx, kubeconfig)
+	ret0, _ := ret[0].(kubernetes.Interface)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorkloadClusterK8sClient indicates an expected call of GetWorkloadClusterK8sClient.
+func (mr *MockClientMockRecorder) GetWorkloadClusterK8sClient(ctx, kubeconfig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadClusterK8sClient", reflect.TypeOf((*MockClient)(nil).GetWorkloadClusterK8sClient), ctx, kubeconfig)
 }
 
 // InstallOrUpgradeHelmRelease mocks base method.

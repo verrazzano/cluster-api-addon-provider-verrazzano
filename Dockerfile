@@ -17,6 +17,7 @@
 # Build the manager binary
 # Run this with docker build --build-arg builder_image=<golang:x.y.z>
 ARG builder_image
+ARG final_image
 
 # Build architecture
 ARG ARCH
@@ -32,12 +33,6 @@ WORKDIR /workspace
 ARG goproxy=https://proxy.golang.org
 # Run this with docker build --build-arg package=./controlplane/kubeadm or --build-arg package=./bootstrap/kubeadm
 ENV GOPROXY=$goproxy
-
-RUN dnf install -y oracle-olcne-release-el8 oraclelinux-developer-release-el8 && \
-    dnf config-manager --enable ol8_olcne16 ol8_developer && \
-    dnf update -y && \
-    dnf install -y jq helm-3.11.1-1.el8 tar git go-toolset-1.19.6 && \
-    go version
 
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -61,7 +56,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
         -o manager ${package}
 
 # Production image
-FROM ghcr.io/oracle/oraclelinux:8-slim
+FROM ${final_image}
+RUN microdnf update \
+    && microdnf clean all
+
 WORKDIR /
 COPY --from=builder /workspace/manager .
 RUN groupadd -r verrazzano \
@@ -70,7 +68,6 @@ RUN groupadd -r verrazzano \
     && chown -R 1000:verrazzano /manager /home/verrazzano \
     && chmod 500 /manager
 
-COPY --from=builder /workspace/manager .
 RUN mkdir -p /license
 COPY LICENSE README.md THIRD_PARTY_LICENSES.txt /license/
 USER 1000

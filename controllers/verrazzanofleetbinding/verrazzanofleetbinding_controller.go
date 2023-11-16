@@ -21,27 +21,26 @@ package verrazzanofleetbinding
 import (
 	"context"
 	"fmt"
-	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	"strings"
 
 	"github.com/pkg/errors"
 	addonsv1alpha1 "github.com/verrazzano/cluster-api-addon-provider-verrazzano/api/v1alpha1"
 	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/internal"
+	"github.com/verrazzano/cluster-api-addon-provider-verrazzano/pkg/utils/k8sutils"
 	helmRelease "helm.sh/helm/v3/pkg/release"
 	helmDriver "helm.sh/helm/v3/pkg/storage/driver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
+	"sigs.k8s.io/cluster-api/util/patch"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
-	"sigs.k8s.io/cluster-api/util/predicates"
 )
 
 const (
@@ -102,7 +101,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, errors.Wrapf(err, "failed to init patch helper")
 	}
 
-	initalizeConditions(ctx, patchHelper, verrazzanoFleetBinding)
+	initializeConditions(ctx, patchHelper, verrazzanoFleetBinding)
 
 	defer func() {
 		log.V(2).Info("Preparing to patch VerrazzanoFleetBinding with return error", "verrazzanoFleetBinding", verrazzanoFleetBinding.Name, "reterr", reterr)
@@ -120,8 +119,8 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 		Name:      verrazzanoFleetBinding.Spec.ClusterRef.Name,
 	}
 
-	k := internal.KubeconfigGetter{}
-	client := &internal.HelmClient{}
+	k := internal.GetterFunc
+	c := &internal.HelmClient{}
 
 	// examine DeletionTimestamp to determine if object is under deletion
 	if verrazzanoFleetBinding.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -150,7 +149,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 				}
 				conditions.MarkTrue(verrazzanoFleetBinding, addonsv1alpha1.ClusterAvailableCondition)
 
-				if err := r.reconcileDelete(ctx, verrazzanoFleetBinding, client, kubeconfig); err != nil {
+				if err := r.reconcileDelete(ctx, verrazzanoFleetBinding, c, kubeconfig); err != nil {
 					// if fail to delete the external dependency here, return with error
 					// so that it can be retried
 					return ctrl.Result{}, err
@@ -197,7 +196,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 	conditions.MarkTrue(verrazzanoFleetBinding, addonsv1alpha1.ClusterAvailableCondition)
 
 	log.V(2).Info("Reconciling VerrazzanoFleetBinding", "releaseProxyName", verrazzanoFleetBinding.Name)
-	err = r.reconcileNormal(ctx, verrazzanoFleetBinding, client, kubeconfig)
+	err = r.reconcileNormal(ctx, verrazzanoFleetBinding, c, kubeconfig)
 
 	return ctrl.Result{Requeue: true}, err
 }
@@ -206,7 +205,7 @@ func (r *VerrazzanoFleetBindingReconciler) Reconcile(ctx context.Context, req ct
 // It will set the ReleaseName on the VerrazzanoFleetBinding if the name is generated and also set the release status and release revision.
 func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
+	k := internal.GetterFunc
 
 	log.V(2).Info("Reconciling VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
@@ -221,9 +220,10 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 		log.Error(err, fmt.Sprintf("Failed to install or upgrade release for binding '%s' on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 		//log.Error(err, fmt.Sprintf("Failed to install or upgrade release '%s' on cluster %s", verrazzanoFleetBinding.Spec.ReleaseName, verrazzanoFleetBinding.Spec.ClusterRef.Name))
 		conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmInstallOrUpgradeFailedReason, clusterv1.ConditionSeverityError, err.Error())
+		return err
 	}
 	if release != nil {
-		log.V(2).Info((fmt.Sprintf("Release '%s' exists on cluster %s, revision = %d", release.Name, verrazzanoFleetBinding.Spec.ClusterRef.Name, release.Version)))
+		log.V(2).Info(fmt.Sprintf("Release '%s' exists on cluster %s, revision = %d", release.Name, verrazzanoFleetBinding.Spec.ClusterRef.Name, release.Version))
 
 		status := release.Info.Status
 		//verrazzanoFleetBinding.SetReleaseStatus(status.String())
@@ -237,32 +237,30 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 		} else if status == helmRelease.StatusFailed && err == nil {
 			log.Info("Helm release failed without error, this might be unexpected", "release", release.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 			conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmInstallOrUpgradeFailedReason, clusterv1.ConditionSeverityError, fmt.Sprintf("Helm release failed: %s", status))
+			return err
 			// TODO: should we set the error state again here?
 		}
 
-		err = setVerrazzanoPlatformOperatorConditions(ctx, verrazzanoFleetBinding, kubeconfig)
+		err = setVerrazzanoPlatformOperatorConditions(ctx, client, verrazzanoFleetBinding, kubeconfig)
 		if err != nil {
 			log.Error(err, "Failed to update conditions for VPO")
 			return err
 		}
-
 	}
 
 	if verrazzanoFleetBinding.Spec.Verrazzano != nil {
 		if verrazzanoFleetBinding.Spec.Verrazzano.Spec != nil {
-			err = k.CreateOrUpdateVerrazzano(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name, verrazzanoFleetBinding.Spec.Verrazzano.Spec)
+			err = k.CreateOrUpdateVerrazzano(ctx, client, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name, verrazzanoFleetBinding.Spec.Verrazzano.Spec)
 			if err != nil {
 				log.Error(err, "Failed to create or update verrazzano")
 				return err
 			}
 
-			err = setVerrazzanoConditions(ctx, verrazzanoFleetBinding, kubeconfig)
+			err = setVerrazzanoConditions(ctx, client, verrazzanoFleetBinding, kubeconfig)
 			if err != nil {
 				log.Error(err, "Failed to update conditions for verrazzano install")
 				return err
 			}
-
-			//conditions.MarkTrue(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoDeployedCondition)
 		}
 	}
 
@@ -272,24 +270,23 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileNormal(ctx context.Context, 
 // reconcileDelete handles VerrazzanoFleetBinding deletion. This will uninstall the VerrazzanoFleetBinding on the Cluster or return nil if the VerrazzanoFleetBinding is not found.
 func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, client internal.Client, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
 
 	log.V(2).Info("Deleting VerrazzanoFleetBinding on cluster", "VerrazzanoFleetBinding", verrazzanoFleetBinding.Name, "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
-	vz, err := k.GetVerrazzanoFromRemoteCluster(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	vz, err := internal.GetVerrazzanoFromRemoteCluster(ctx, client, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	if err != nil {
 		log.Error(err, "unable to fetch verrazzano install from workload cluster")
 		return err
 	}
 
 	if vz != nil {
-		err = k.DeleteVerrazzanoFromRemoteCluster(ctx, vz, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+		err = internal.DeleteVerrazzanoFromRemoteCluster(ctx, client, vz, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 		if err != nil {
 			log.Error(err, "failed to delete verrazzano")
 			return err
 		}
 
-		err = k.WaitForVerrazzanoUninstallCompletion(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+		err = internal.WaitForVerrazzanoUninstallCompletion(ctx, client, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 		if err != nil {
 			log.Error(err, "failed to uninstall verrazzano completely")
 			return err
@@ -308,7 +305,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 	if err != nil {
 		log.V(2).Error(err, "error getting release from cluster", "cluster", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 
-		if err == helmDriver.ErrReleaseNotFound {
+		if errors.Is(err, helmDriver.ErrReleaseNotFound) {
 			log.V(2).Info(fmt.Sprintf("Release binding '%s' not found on cluster %s, nothing to do for uninstall", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 			conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmReleaseDeletedReason, clusterv1.ConditionSeverityInfo, "")
 
@@ -329,7 +326,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 		return errors.Wrapf(err, "error uninstalling chart with Helm on cluster %s", verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	}
 
-	log.V(2).Info((fmt.Sprintf("Binding Chart '%s' successfully uninstalled on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name)))
+	log.V(2).Info(fmt.Sprintf("Binding Chart '%s' successfully uninstalled on cluster %s", verrazzanoFleetBinding.GetObjectMeta().GetName(), verrazzanoFleetBinding.Spec.ClusterRef.Name))
 	conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.HelmReleaseDeletedReason, clusterv1.ConditionSeverityInfo, "")
 	if response != nil && response.Info != "" {
 		log.V(2).Info(fmt.Sprintf("Response is %s", response.Info))
@@ -338,7 +335,7 @@ func (r *VerrazzanoFleetBindingReconciler) reconcileDelete(ctx context.Context, 
 	return nil
 }
 
-func initalizeConditions(ctx context.Context, patchHelper *patch.Helper, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) {
+func initializeConditions(ctx context.Context, patchHelper *patch.Helper, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding) {
 	log := ctrl.LoggerFrom(ctx)
 	if len(verrazzanoFleetBinding.GetConditions()) == 0 {
 		conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.PreparingToHelmInstallReason, clusterv1.ConditionSeverityInfo, "Preparing to to install Helm chart")
@@ -375,10 +372,9 @@ func patchVerrazzanoFleetBinding(ctx context.Context, patchHelper *patch.Helper,
 	)
 }
 
-func setVerrazzanoPlatformOperatorConditions(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
+func setVerrazzanoPlatformOperatorConditions(ctx context.Context, c internal.Client, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
-	k8sclient, err := k.GetWorkloadClusterK8sClient(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	k8sclient, err := c.GetWorkloadClusterK8sClient(ctx, kubeconfig)
 	if err != nil {
 		log.Error(err, "Unable to get k8s client")
 		return err
@@ -404,6 +400,7 @@ func setVerrazzanoPlatformOperatorConditions(ctx context.Context, verrazzanoFlee
 				// this will be the vpo pod
 				conditions.MarkFalse(verrazzanoFleetBinding, addonsv1alpha1.VerrazzanoOperatorReadyCondition, addonsv1alpha1.VerrazzanoPlatformOperatorNotRunningReason, clusterv1.ConditionSeverityError, "Verrazzano Platform Operator pods are not running")
 			}
+			podReadyVPO = append(podReadyVPO, false)
 		} else {
 			podReadyVPO = append(podReadyVPO, k8sutils.IsPodReady(ctx, &pod))
 		}
@@ -419,10 +416,9 @@ func setVerrazzanoPlatformOperatorConditions(ctx context.Context, verrazzanoFlee
 	return nil
 }
 
-func setVerrazzanoConditions(ctx context.Context, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
+func setVerrazzanoConditions(ctx context.Context, c internal.Client, verrazzanoFleetBinding *addonsv1alpha1.VerrazzanoFleetBinding, kubeconfig string) error {
 	log := ctrl.LoggerFrom(ctx)
-	k := internal.KubeconfigGetter{}
-	vz, err := k.GetVerrazzanoFromRemoteCluster(ctx, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
+	vz, err := internal.GetVerrazzanoFromRemoteCluster(ctx, c, verrazzanoFleetBinding.Name, kubeconfig, verrazzanoFleetBinding.Spec.ClusterRef.Name)
 	if err != nil {
 		log.Error(err, "unable to fetch verrazzano install from workload cluster")
 		return err
