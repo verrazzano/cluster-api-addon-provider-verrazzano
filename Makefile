@@ -331,7 +331,7 @@ manager: ## Build the manager binary into the ./bin folder
 .PHONY: docker-pull-prerequisites
 docker-pull-prerequisites:
 	docker pull ${GO_CONTAINER_IMAGE}
-	dcker pull ${FINAL_IMAGE}
+	docker pull ${FINAL_IMAGE}
 
 .PHONY: docker-build-all
 docker-build-all: $(addprefix docker-build-,$(ALL_ARCH)) ## Build docker images for all architectures
