@@ -58,7 +58,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
 # Production image
 FROM ${final_image}
 RUN microdnf update \
-    && microdnf clean all \
+    && microdnf clean all
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
