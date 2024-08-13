@@ -1,9 +1,8 @@
 
 # Cluster API Add-on Provider for Verrazzano
-
-## ✨ What is Cluster API Add-on Provider for Verrazzano?
-
 Cluster API Add-on Provider for Verrazzano extends the functionality of Cluster API by providing a solution for managing the installation, configuration, upgrade and deletion of Verrazzano on managed/workload clusters.
+
+## Getting Started
 
 ### ⚙️ Prerequisites
 
@@ -49,4 +48,24 @@ To cleanup Verrazzano installations from the remote cluster, just delete the `Ve
   ```bash
   kubectl delete verrazzanofleet example-fleet-1
   ```
+
+## Contributing
+
+This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
+
+## Security
+
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
+
+## License
+
+*The correct copyright notice format for both documentation and software is*
+    "Copyright (c) [year,] year Oracle and/or its affiliates."
+*You must include the year the content was first released (on any platform) and the most recent year in which it was revised*
+
+Copyright (c) 2023 Oracle and/or its affiliates.
+
+
+Released under the Universal Permissive License v1.0 as shown at
+<https://oss.oracle.com/licenses/upl/>.
 
